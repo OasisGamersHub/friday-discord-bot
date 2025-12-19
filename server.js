@@ -8,19 +8,25 @@ const PORT = 5000;
 
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const isProduction = !!process.env.DASHBOARD_URL;
 const REDIRECT_URI = process.env.DASHBOARD_URL 
   ? `${process.env.DASHBOARD_URL}/auth/discord/callback`
   : `https://${process.env.REPLIT_DEV_DOMAIN}/auth/discord/callback`;
 
 const ALLOWED_GUILD_ID = process.env.OASIS_GUILD_ID || null;
 
+app.set('trust proxy', 1);
 app.use(cookieParser());
 app.use(express.json());
 app.use(session({
   secret: process.env.SESSION_SECRET || 'discord-oauth-fallback-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
+  cookie: { 
+    secure: isProduction,
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000 
+  }
 }));
 
 app.set('Cache-Control', 'no-cache');
