@@ -11,6 +11,15 @@ const AGE_ROLES = {
   adults: ['adulto', 'over18', 'maggiorenne', '+18', '18+', 'adult', 'nsfw', 'over 18', 'adulti', 'mature']
 };
 
+const MEE6_BOT_ID = '159985870458322944';
+
+const MEE6_FEATURES = {
+  leveling: ['livello', 'level', 'xp', 'rank', 'classifica', 'leaderboard'],
+  welcome: ['benvenuto', 'welcome', 'arrivals', 'arrivi', 'join'],
+  moderation: ['mod-log', 'modlog', 'logs', 'warns', 'mute'],
+  reactionRoles: ['reaction-role', 'ruoli', 'roles', 'self-assign']
+};
+
 export function findExistingAgeRoles(guild) {
   const roles = guild.roles.cache;
   let minorRole = null;
@@ -400,7 +409,7 @@ export async function executeAction(guild, action, params = {}) {
   return results;
 }
 
-export function formatReport(report, aiRecommendations) {
+export function formatReport(report, aiRecommendations, mee6Compat = null) {
   let text = `**📊 REPORT SERVER: ${report.structure.name}**\n\n`;
   
   text += `**🏷️ Struttura:**\n`;
@@ -464,9 +473,130 @@ export function formatReport(report, aiRecommendations) {
     }
   }
 
-  text += `\n*Usa \`!schema\` per vedere la struttura completa e \`!trend\` per i trend di crescita*`;
+  if (mee6Compat && mee6Compat.mee6Present) {
+    const symbiosisEmoji = mee6Compat.symbiosis === 'excellent' ? '✅' : 
+                           mee6Compat.symbiosis === 'good' ? '🟡' : '⚠️';
+    text += `\n**🤖 Compatibilità MEE6: ${symbiosisEmoji} ${mee6Compat.score}/100**\n`;
+    
+    if (mee6Compat.detectedFeatures.length > 0) {
+      text += `• Funzioni MEE6 rilevate: ${mee6Compat.detectedFeatures.join(', ')}\n`;
+    }
+    
+    mee6Compat.recommendations.slice(0, 4).forEach(rec => {
+      text += `${rec}\n`;
+    });
+    
+    if (mee6Compat.conflicts.length > 0) {
+      text += `\n**⚠️ Note:**\n`;
+      mee6Compat.conflicts.forEach(c => {
+        text += `• ${c.message}\n`;
+      });
+    }
+  }
+
+  text += `\n*Usa \`!schema\` per struttura, \`!trend\` per crescita, \`!mee6\` per check compatibilità*`;
 
   return text;
+}
+
+export async function checkMEE6Compatibility(guild) {
+  const result = {
+    mee6Present: false,
+    mee6Role: null,
+    symbiosis: 'unknown',
+    score: 100,
+    detectedFeatures: [],
+    conflicts: [],
+    recommendations: [],
+    channelsUsedByMEE6: [],
+    webhooks: []
+  };
+
+  try {
+    const members = await guild.members.fetch();
+    const mee6Bot = members.get(MEE6_BOT_ID);
+    
+    if (!mee6Bot) {
+      result.symbiosis = 'no_mee6';
+      result.recommendations.push('MEE6 non rilevato. Friday può gestire tutte le funzionalità.');
+      return result;
+    }
+
+    result.mee6Present = true;
+    result.mee6Role = mee6Bot.roles.highest?.name || 'Nessun ruolo';
+
+    const channels = guild.channels.cache;
+    channels.forEach(channel => {
+      if (channel.type !== 0) return;
+      const lowerName = channel.name.toLowerCase();
+      
+      Object.entries(MEE6_FEATURES).forEach(([feature, keywords]) => {
+        if (keywords.some(kw => lowerName.includes(kw))) {
+          if (!result.detectedFeatures.includes(feature)) {
+            result.detectedFeatures.push(feature);
+          }
+          result.channelsUsedByMEE6.push({
+            name: channel.name,
+            feature: feature
+          });
+        }
+      });
+    });
+
+    const fridayFeatures = ['audit', 'security', 'age-separation', 'ticketing', 'ai-analysis'];
+    const mee6Features = result.detectedFeatures;
+    
+    if (mee6Features.includes('leveling')) {
+      result.recommendations.push('✅ Leveling gestito da MEE6 - Friday NON duplicherà questa funzione');
+    }
+    if (mee6Features.includes('welcome')) {
+      result.recommendations.push('✅ Welcome gestito da MEE6 - Friday NON duplicherà questa funzione');
+    }
+    if (mee6Features.includes('moderation')) {
+      result.recommendations.push('✅ Mod-log gestito da MEE6 - Friday si concentra su audit AI avanzato');
+    }
+    if (mee6Features.includes('reactionRoles')) {
+      result.recommendations.push('✅ Reaction Roles gestiti da MEE6 - Friday NON li toccherà');
+    }
+
+    const mee6RolePosition = mee6Bot.roles.highest?.position || 0;
+    const botMember = guild.members.me;
+    const fridayRolePosition = botMember?.roles.highest?.position || 0;
+    
+    if (fridayRolePosition < mee6RolePosition) {
+      result.conflicts.push({
+        type: 'ROLE_HIERARCHY',
+        severity: 'LOW',
+        message: 'Friday ha un ruolo più basso di MEE6 (non è un problema)'
+      });
+    }
+
+    const mee6Perms = mee6Bot.permissions;
+    if (mee6Perms.has('Administrator')) {
+      result.recommendations.push('⚠️ MEE6 ha permessi Admin - Friday eviterà conflitti di permessi');
+    }
+
+    if (result.conflicts.filter(c => c.severity === 'HIGH').length === 0) {
+      result.symbiosis = 'excellent';
+      result.score = 100;
+    } else if (result.conflicts.filter(c => c.severity === 'MEDIUM').length > 0) {
+      result.symbiosis = 'good';
+      result.score = 80;
+    } else {
+      result.symbiosis = 'needs_attention';
+      result.score = 60;
+    }
+
+    result.recommendations.push('🤝 Friday e MEE6 possono coesistere perfettamente!');
+    result.recommendations.push('📊 Friday si occupa di: Audit AI, Sicurezza, Separazione Età, Ticketing');
+
+  } catch (error) {
+    console.error('MEE6 check error:', error);
+    result.symbiosis = 'error';
+    result.recommendations.push('Impossibile verificare completamente la compatibilità MEE6');
+  }
+
+  return result;
 }
 
 export function generateServerSchema(structure) {

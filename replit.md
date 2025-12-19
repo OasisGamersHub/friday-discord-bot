@@ -10,6 +10,12 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-19**: Sistema compatibilità MEE6 Premium
+  - Nuovo comando `!mee6` per check compatibilità con MEE6
+  - Rilevamento automatico funzionalità MEE6 attive (leveling, welcome, mod-log, reaction roles)
+  - Analisi simbiosi Friday + MEE6 con punteggio
+  - Integrazione nel report !audit con sezione dedicata MEE6
+  - Friday evita duplicazioni: non tocca mai funzioni già gestite da MEE6
 - **2024-12**: Aggiunta configurazione deploy Fly.io + MongoDB
   - Dockerfile e fly.toml per deploy su Fly.io
   - Modulo database.js per persistenza dati su MongoDB Atlas
@@ -29,11 +35,12 @@ Preferred communication style: Simple, everyday language (Italian)
   - `!ping` - Test connessione
   - `!info` - Info server
   - `!stats` - Statistiche server
-  - `!audit` - Analisi completa con AI (suggerimenti graduali in 3 fasi)
+  - `!audit` - Analisi completa con AI (suggerimenti graduali in 3 fasi + check MEE6)
   - `!security` - Report sicurezza
   - `!age` - Controllo separazione fasce d'età
   - `!schema` - Mappa visuale struttura server (categorie, canali, ruoli)
   - `!trend` - Andamento e trend crescita community
+  - `!mee6` - Check compatibilità con MEE6 Premium (simbiosi, funzioni rilevate, conflitti)
   - `!fix <azione>` - Applica correzioni automatiche (riusa ruoli esistenti)
   - `!help` - Lista comandi
 - Tracciamento statistiche in-memory e su MongoDB (join, messaggi, attività canali)
@@ -53,6 +60,12 @@ Preferred communication style: Simple, everyday language (Italian)
   - disableEveryoneInvites - Disabilita inviti per @everyone
 - `formatReport()` - Formatta report per Discord con fasi
 - `generateServerSchema()` - Genera mappa visuale struttura server
+- `checkMEE6Compatibility()` - Analizza simbiosi con MEE6 Premium:
+  - Rileva presenza MEE6 nel server
+  - Identifica funzionalità MEE6 attive (leveling, welcome, mod-log, reaction roles)
+  - Analizza canali usati da MEE6
+  - Verifica conflitti di permessi/gerarchia ruoli
+  - Genera punteggio simbiosi e raccomandazioni
 
 ### Web Dashboard (server.js)
 - Express 5.x su porta 5000

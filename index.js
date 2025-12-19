@@ -7,7 +7,8 @@ import {
   executeAction,
   formatReport,
   generateServerSchema,
-  findExistingAgeRoles
+  findExistingAgeRoles,
+  checkMEE6Compatibility
 } from './modules/serverAnalyzer.js';
 import { 
   connectDB, 
@@ -96,9 +97,10 @@ client.on('messageCreate', async (message) => {
     try {
       const report = await getSecurityReport(message.guild);
       const trends = await getTrends(message.guild.id);
+      const mee6Compat = await checkMEE6Compatibility(message.guild);
       const aiRecommendations = await getAIRecommendations(report, message.guild, trends);
       
-      const formattedReport = formatReport(report, aiRecommendations);
+      const formattedReport = formatReport(report, aiRecommendations, mee6Compat);
       
       if (formattedReport.length > 2000) {
         const chunks = formattedReport.match(/[\s\S]{1,1900}/g);
@@ -326,6 +328,65 @@ client.on('messageCreate', async (message) => {
     await message.reply({ embeds: [embed] });
   }
 
+  if (command === 'mee6') {
+    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return message.reply('❌ Serve il permesso Amministratore.');
+    }
+
+    const loadingMsg = await message.reply('🔍 Analisi compatibilità MEE6...');
+    
+    try {
+      const mee6Compat = await checkMEE6Compatibility(message.guild);
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🤖 Compatibilità MEE6')
+        .setColor(mee6Compat.mee6Present ? (mee6Compat.symbiosis === 'excellent' ? '#2ecc71' : '#f1c40f') : '#3498db');
+
+      if (!mee6Compat.mee6Present) {
+        embed.setDescription('MEE6 non è presente in questo server.\nFriday può gestire tutte le funzionalità autonomamente.');
+      } else {
+        embed.addFields(
+          { name: 'Stato Simbiosi', value: `${mee6Compat.symbiosis === 'excellent' ? '✅ Eccellente' : mee6Compat.symbiosis === 'good' ? '🟡 Buona' : '⚠️ Da verificare'}`, inline: true },
+          { name: 'Punteggio', value: `${mee6Compat.score}/100`, inline: true },
+          { name: 'Ruolo MEE6', value: mee6Compat.mee6Role, inline: true }
+        );
+        
+        if (mee6Compat.detectedFeatures.length > 0) {
+          embed.addFields({
+            name: '🎯 Funzioni MEE6 Rilevate',
+            value: mee6Compat.detectedFeatures.map(f => `• ${f}`).join('\n')
+          });
+        }
+        
+        if (mee6Compat.channelsUsedByMEE6.length > 0) {
+          embed.addFields({
+            name: '📺 Canali MEE6',
+            value: mee6Compat.channelsUsedByMEE6.slice(0, 5).map(c => `#${c.name} (${c.feature})`).join('\n')
+          });
+        }
+        
+        embed.addFields({
+          name: '📋 Raccomandazioni',
+          value: mee6Compat.recommendations.slice(0, 4).join('\n')
+        });
+        
+        if (mee6Compat.conflicts.length > 0) {
+          embed.addFields({
+            name: '⚠️ Note',
+            value: mee6Compat.conflicts.map(c => `• ${c.message}`).join('\n')
+          });
+        }
+      }
+      
+      embed.setFooter({ text: 'Friday si integra perfettamente con MEE6 Premium!' });
+      
+      await loadingMsg.edit({ content: '', embeds: [embed] });
+    } catch (error) {
+      console.error('MEE6 check error:', error);
+      await loadingMsg.edit('❌ Errore durante l\'analisi MEE6.');
+    }
+  }
+
   if (command === 'help') {
     const embed = new EmbedBuilder()
       .setTitle('📋 Comandi Disponibili')
@@ -339,9 +400,10 @@ client.on('messageCreate', async (message) => {
         { name: '!age', value: 'Controllo separazione età', inline: true },
         { name: '!schema', value: 'Mappa struttura server', inline: true },
         { name: '!trend', value: 'Andamento e crescita', inline: true },
+        { name: '!mee6', value: 'Check compatibilità MEE6', inline: true },
         { name: '!fix <azione>', value: 'Applica correzioni', inline: true }
       )
-      .setFooter({ text: 'Usa !fix senza argomenti per vedere le azioni disponibili' });
+      .setFooter({ text: 'Friday + MEE6 = Simbiosi perfetta!' });
 
     await message.reply({ embeds: [embed] });
   }
