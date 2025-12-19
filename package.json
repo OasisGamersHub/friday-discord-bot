@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "server": "node server.js",
+    "production": "node start.js",
     "dev": "node index.js & node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
