@@ -10,6 +10,19 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-19**: Dashboard interattiva potenziata
+  - Nuovo tab "Azioni" con Quick Actions (Audit, Backup, Security Check, Refresh Stats)
+  - Configurazione Anti-Raid dalla dashboard (soglia join, finestra tempo)
+  - Lista backup salvati con timestamp e dettagli
+  - Risultato ultimo comando eseguito in tempo reale
+  - API endpoints: POST /api/action/:action, POST /api/config/antiraid
+- **2024-12-19**: Grafici extra per analytics avanzate
+  - Grafico a barre per attivita messaggi (30 giorni)
+  - Grafico dual-line per flusso membri Join/Leave (verde/rosso)
+  - Metriche giornaliere: messageCount, joinCount, leaveCount persistite su MongoDB
+  - Reset automatico contatori a mezzanotte con persistenza
+  - Handler guildMemberRemove per tracciare le leave
+  - Idratazione contatori da database al riavvio (nessuna perdita dati)
 - **2024-12-19**: Sistema sicurezza all'avanguardia
   - Headers HTTP sicuri (CSP, HSTS, X-Frame-Options, X-XSS-Protection)
   - Rate limiting API (60 richieste/min per IP)
@@ -19,7 +32,7 @@ Preferred communication style: Simple, everyday language (Italian)
   - Tab Sicurezza nella dashboard con statistiche live
   - Logging eventi login/logout/accessi negati
 - **2024-12-19**: Dashboard interattiva con statistiche live
-  - Interfaccia a tab (Overview, Sicurezza, Attività, Comandi, Funzionalità)
+  - Interfaccia a 6 tab (Overview, Azioni, Sicurezza, Attivita, Comandi, Funzionalita)
   - Grafici Chart.js per trend crescita 30 giorni
   - API endpoints per dati live (/api/status, /api/activity, /api/metrics, /api/audits, /api/backups, /api/security)
   - Alert anti-raid in tempo reale sulla dashboard
