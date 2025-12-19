@@ -18,6 +18,7 @@ import {
   saveServerSnapshot,
   getServerSnapshots,
   saveDailyMetrics,
+  getTodayMetrics,
   getTrends,
   saveConfigBackup,
   getConfigBackups
@@ -56,10 +57,19 @@ client.once('ready', async () => {
   
   for (const guild of client.guilds.cache.values()) {
     const savedStats = await getServerStats(guild.id);
+    const todayMetrics = await getTodayMetrics(guild.id);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const metricsDate = todayMetrics?.date ? new Date(todayMetrics.date) : null;
+    const isToday = metricsDate && metricsDate.getTime() === today.getTime();
+    
     serverStats.set(guild.id, {
       joinHistory: savedStats?.joinHistory || [],
-      messageCount: savedStats?.messageCount || 0,
-      activeChannels: new Map(Object.entries(savedStats?.activeChannels || {}))
+      messageCount: isToday ? (todayMetrics?.messageCount || 0) : 0,
+      activeChannels: new Map(Object.entries(savedStats?.activeChannels || {})),
+      todayJoins: isToday ? (todayMetrics?.joinCount || 0) : 0,
+      todayLeaves: isToday ? (todayMetrics?.leaveCount || 0) : 0
     });
     
     updateGuildStats(guild.id, {
@@ -94,6 +104,13 @@ function setupScheduledTasks() {
   }, 60000);
   
   const now = new Date();
+  const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0) - now;
+  
+  setTimeout(() => {
+    resetDailyCounters();
+    setInterval(resetDailyCounters, 24 * 60 * 60 * 1000);
+  }, msUntilMidnight);
+  
   const msUntilSunday = ((7 - now.getDay()) % 7 || 7) * 24 * 60 * 60 * 1000 - 
     now.getHours() * 60 * 60 * 1000 - now.getMinutes() * 60 * 1000;
   
@@ -103,6 +120,33 @@ function setupScheduledTasks() {
   }, msUntilSunday);
   
   console.log('Task schedulati configurati');
+}
+
+async function resetDailyCounters() {
+  for (const [guildId, stats] of serverStats) {
+    stats.todayJoins = 0;
+    stats.todayLeaves = 0;
+    stats.messageCount = 0;
+    stats.activeChannels = new Map();
+    
+    const guild = client.guilds.cache.get(guildId);
+    if (guild) {
+      await saveDailyMetrics(guildId, {
+        memberCount: guild.memberCount,
+        messageCount: 0,
+        joinCount: 0,
+        leaveCount: 0,
+        activeChannels: 0
+      });
+    }
+  }
+  
+  addActivityLog({
+    type: 'system',
+    message: 'Contatori giornalieri resettati a mezzanotte'
+  });
+  
+  console.log('Contatori giornalieri resettati e persistiti');
 }
 
 async function runWeeklyAudit() {
@@ -151,6 +195,14 @@ client.on('guildMemberAdd', async member => {
   const stats = serverStats.get(member.guild.id);
   if (stats) {
     stats.joinHistory.push({ timestamp: Date.now(), memberId: member.id });
+    stats.todayJoins = (stats.todayJoins || 0) + 1;
+    
+    saveDailyMetrics(member.guild.id, {
+      memberCount: member.guild.memberCount,
+      messageCount: stats.messageCount || 0,
+      joinCount: stats.todayJoins || 0,
+      leaveCount: stats.todayLeaves || 0
+    }).catch(err => console.error('Metrics save error:', err.message));
   }
   
   const guildId = member.guild.id;
@@ -201,6 +253,26 @@ client.on('guildMemberAdd', async member => {
   await handleWelcome(member);
 });
 
+client.on('guildMemberRemove', async member => {
+  const stats = serverStats.get(member.guild.id);
+  if (stats) {
+    stats.todayLeaves = (stats.todayLeaves || 0) + 1;
+    
+    saveDailyMetrics(member.guild.id, {
+      memberCount: member.guild.memberCount,
+      messageCount: stats.messageCount || 0,
+      joinCount: stats.todayJoins || 0,
+      leaveCount: stats.todayLeaves || 0
+    }).catch(err => console.error('Metrics save error:', err.message));
+  }
+  
+  addActivityLog({
+    type: 'member_leave',
+    guildId: member.guild.id,
+    message: `${member.user.tag} ha lasciato il server`
+  });
+});
+
 async function handleWelcome(member) {
   const guild = member.guild;
   const hasMee6Welcome = guild.channels.cache.some(ch => 
@@ -247,10 +319,12 @@ client.on('messageCreate', async (message) => {
     const channelCount = stats.activeChannels.get(message.channel.id) || 0;
     stats.activeChannels.set(message.channel.id, channelCount + 1);
     
-    if (stats.messageCount % 100 === 0) {
+    if (stats.messageCount % 10 === 0) {
       saveDailyMetrics(message.guild.id, {
         memberCount: message.guild.memberCount,
         messageCount: stats.messageCount,
+        joinCount: stats.todayJoins || 0,
+        leaveCount: stats.todayLeaves || 0,
         activeChannels: stats.activeChannels.size
       }).catch(err => console.error('Metrics save error:', err.message));
     }

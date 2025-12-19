@@ -195,6 +195,20 @@ export async function getDailyMetrics(guildId, days = 30) {
   }
 }
 
+export async function getTodayMetrics(guildId) {
+  if (!db) return null;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  try {
+    return await db.collection('dailyMetrics').findOne({ guildId, date: today });
+  } catch (error) {
+    console.error('Errore lettura metriche di oggi:', error.message);
+    return null;
+  }
+}
+
 export async function getTrends(guildId) {
   if (!db) return null;
   

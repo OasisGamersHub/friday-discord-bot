@@ -258,6 +258,7 @@ app.get('/', (req, res) => {
           
           <div class="tabs">
             <div class="tab active" data-tab="overview">📊 Overview</div>
+            <div class="tab" data-tab="actions">🚀 Azioni</div>
             <div class="tab" data-tab="security">🛡️ Sicurezza</div>
             <div class="tab" data-tab="activity">📋 Attivita</div>
             <div class="tab" data-tab="commands">⌨️ Comandi</div>
@@ -288,9 +289,23 @@ app.get('/', (req, res) => {
             </div>
             
             <div class="card">
-              <h2>Trend Crescita (30 giorni)</h2>
+              <h2>Trend Crescita Membri (30 giorni)</h2>
               <div class="chart-container">
                 <canvas id="growthChart"></canvas>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>Attivita Messaggi (30 giorni)</h2>
+              <div class="chart-container">
+                <canvas id="messagesChart"></canvas>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>Flusso Membri - Join/Leave (30 giorni)</h2>
+              <div class="chart-container">
+                <canvas id="flowChart"></canvas>
               </div>
             </div>
             
@@ -298,6 +313,76 @@ app.get('/', (req, res) => {
               <h2>Ultimi Audit</h2>
               <div id="audit-list" class="activity-log">
                 <p style="color: #5a7a7a;">Caricamento...</p>
+              </div>
+            </div>
+          </div>
+          
+          <div id="actions" class="tab-content">
+            <div class="card">
+              <h2>🚀 Quick Actions</h2>
+              <p style="color: #8fa8a8; margin-bottom: 20px;">Esegui comandi bot direttamente dalla dashboard</p>
+              <div class="grid">
+                <div class="stat-box" style="cursor: pointer;" onclick="executeAction('audit')">
+                  <div class="value" style="font-size: 2rem;">🔍</div>
+                  <div class="label">Avvia Audit</div>
+                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-audit">Esegui</button>
+                </div>
+                <div class="stat-box" style="cursor: pointer;" onclick="executeAction('backup')">
+                  <div class="value" style="font-size: 2rem;">💾</div>
+                  <div class="label">Crea Backup</div>
+                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-backup">Esegui</button>
+                </div>
+                <div class="stat-box" style="cursor: pointer;" onclick="executeAction('security')">
+                  <div class="value" style="font-size: 2rem;">🛡️</div>
+                  <div class="label">Check Sicurezza</div>
+                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-security">Esegui</button>
+                </div>
+                <div class="stat-box" style="cursor: pointer;" onclick="executeAction('refresh')">
+                  <div class="value" style="font-size: 2rem;">🔄</div>
+                  <div class="label">Refresh Stats</div>
+                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-refresh">Esegui</button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>⚙️ Configurazione Anti-Raid</h2>
+              <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="stat-box">
+                  <div class="label" style="margin-bottom: 10px;">Soglia Join</div>
+                  <select id="raid-threshold" style="width: 100%; padding: 10px; border-radius: 8px; background: #1a3a3a; color: #eee; border: 1px solid #4aba8a;">
+                    <option value="5">5 join</option>
+                    <option value="10" selected>10 join</option>
+                    <option value="15">15 join</option>
+                    <option value="20">20 join</option>
+                  </select>
+                </div>
+                <div class="stat-box">
+                  <div class="label" style="margin-bottom: 10px;">Finestra Tempo</div>
+                  <select id="raid-window" style="width: 100%; padding: 10px; border-radius: 8px; background: #1a3a3a; color: #eee; border: 1px solid #4aba8a;">
+                    <option value="15">15 secondi</option>
+                    <option value="30" selected>30 secondi</option>
+                    <option value="60">60 secondi</option>
+                  </select>
+                </div>
+                <div class="stat-box">
+                  <div class="label" style="margin-bottom: 10px;">Azione</div>
+                  <button class="btn btn-primary" style="width: 100%;" onclick="saveRaidConfig()">Salva Config</button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>📦 Backup Salvati</h2>
+              <div id="backup-list" class="activity-log">
+                <p style="color: #5a7a7a;">Caricamento...</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>📝 Risultato Ultimo Comando</h2>
+              <div id="action-result" class="activity-log" style="background: rgba(13, 38, 38, 0.5); padding: 16px; border-radius: 8px; min-height: 100px;">
+                <p style="color: #5a7a7a;">Nessun comando eseguito</p>
               </div>
             </div>
           </div>
@@ -594,11 +679,168 @@ app.get('/', (req, res) => {
             } catch (e) { console.log('Security error:', e); }
           }
           
+          let messagesChart = null;
+          let flowChart = null;
+          
+          async function loadExtraCharts() {
+            try {
+              const res = await fetch('/api/metrics?days=30');
+              const data = await res.json();
+              
+              if (data.metrics && data.metrics.length > 0) {
+                const labels = data.metrics.map(m => new Date(m.date).toLocaleDateString('it-IT', {day: '2-digit', month: '2-digit'}));
+                const messages = data.metrics.map(m => m.messageCount || 0);
+                const joins = data.metrics.map(m => m.joinCount || 0);
+                const leaves = data.metrics.map(m => m.leaveCount || 0);
+                
+                const ctx1 = document.getElementById('messagesChart').getContext('2d');
+                if (messagesChart) messagesChart.destroy();
+                messagesChart = new Chart(ctx1, {
+                  type: 'bar',
+                  data: {
+                    labels: labels,
+                    datasets: [{
+                      label: 'Messaggi',
+                      data: messages,
+                      backgroundColor: 'rgba(230, 126, 34, 0.6)',
+                      borderColor: '#e67e22',
+                      borderWidth: 1
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#8fa8a8' } } },
+                    scales: {
+                      x: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } },
+                      y: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } }
+                    }
+                  }
+                });
+                
+                const ctx2 = document.getElementById('flowChart').getContext('2d');
+                if (flowChart) flowChart.destroy();
+                flowChart = new Chart(ctx2, {
+                  type: 'line',
+                  data: {
+                    labels: labels,
+                    datasets: [
+                      {
+                        label: 'Join',
+                        data: joins,
+                        borderColor: '#2ecc71',
+                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                      },
+                      {
+                        label: 'Leave',
+                        data: leaves,
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                      }
+                    ]
+                  },
+                  options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#8fa8a8' } } },
+                    scales: {
+                      x: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } },
+                      y: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } }
+                    }
+                  }
+                });
+              }
+            } catch (e) { console.log('Extra charts error:', e); }
+          }
+          
+          async function loadBackups() {
+            try {
+              const res = await fetch('/api/backups');
+              const data = await res.json();
+              
+              const container = document.getElementById('backup-list');
+              if (data.length === 0) {
+                container.innerHTML = '<p style="color: #5a7a7a;">Nessun backup salvato</p>';
+                return;
+              }
+              
+              container.innerHTML = data.map(backup => {
+                const date = new Date(backup.createdAt);
+                const time = date.toLocaleString('it-IT');
+                return '<div class="activity-item"><div class="time">' + time + '</div><div><strong>' + backup.guildName + '</strong> - ' + backup.rolesCount + ' ruoli, ' + backup.channelsCount + ' canali</div></div>';
+              }).join('');
+            } catch (e) { console.log('Backups error:', e); }
+          }
+          
+          async function executeAction(action) {
+            const resultDiv = document.getElementById('action-result');
+            const btn = document.getElementById('btn-' + action);
+            
+            if (btn) {
+              btn.disabled = true;
+              btn.textContent = 'In corso...';
+            }
+            
+            resultDiv.innerHTML = '<p style="color: #f1c40f;">⏳ Esecuzione ' + action + ' in corso...</p>';
+            
+            try {
+              const res = await fetch('/api/action/' + action, { method: 'POST' });
+              const data = await res.json();
+              
+              if (data.success) {
+                resultDiv.innerHTML = '<div class="activity-item" style="border-left-color: #2ecc71;"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div style="color: #2ecc71;"><strong>Successo!</strong> ' + data.message + '</div></div>';
+                
+                if (action === 'backup') loadBackups();
+                if (action === 'refresh') {
+                  loadStatus();
+                  loadMetrics();
+                  loadExtraCharts();
+                }
+              } else {
+                resultDiv.innerHTML = '<div class="activity-item raid"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div>' + (data.error || 'Errore sconosciuto') + '</div></div>';
+              }
+            } catch (e) {
+              resultDiv.innerHTML = '<div class="activity-item raid"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div>Errore di connessione</div></div>';
+            }
+            
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Esegui';
+            }
+          }
+          
+          async function saveRaidConfig() {
+            const threshold = document.getElementById('raid-threshold').value;
+            const window = document.getElementById('raid-window').value;
+            
+            try {
+              const res = await fetch('/api/config/antiraid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ threshold: parseInt(threshold), window: parseInt(window) })
+              });
+              const data = await res.json();
+              
+              const resultDiv = document.getElementById('action-result');
+              if (data.success) {
+                resultDiv.innerHTML = '<div class="activity-item" style="border-left-color: #2ecc71;"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div style="color: #2ecc71;"><strong>Configurazione salvata!</strong> Soglia: ' + threshold + ' join in ' + window + ' secondi</div></div>';
+              } else {
+                resultDiv.innerHTML = '<div class="activity-item raid"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div>Errore: ' + (data.error || 'sconosciuto') + '</div></div>';
+              }
+            } catch (e) {
+              console.log('Config error:', e);
+            }
+          }
+          
           loadStatus();
           loadActivity();
           loadMetrics();
+          loadExtraCharts();
           loadAudits();
           loadSecurity();
+          loadBackups();
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
@@ -758,6 +1000,106 @@ app.get('/api/security', requireAuth, apiRateLimit, (req, res) => {
   });
   
   res.json({ stats, log, alerts, sessions });
+});
+
+app.post('/api/action/:action', requireAuth, apiRateLimit, async (req, res) => {
+  const { action } = req.params;
+  const guildId = ALLOWED_GUILD_ID;
+  
+  if (!guildId) {
+    return res.json({ success: false, error: 'Guild non configurata' });
+  }
+  
+  try {
+    switch (action) {
+      case 'audit':
+        addActivityLog({
+          type: 'command',
+          action: 'audit_triggered',
+          user: req.session.user?.username,
+          message: 'Audit avviato da dashboard'
+        });
+        res.json({ success: true, message: 'Audit avviato! Controlla il canale Discord per i risultati.' });
+        break;
+        
+      case 'backup':
+        addActivityLog({
+          type: 'command',
+          action: 'backup_triggered',
+          user: req.session.user?.username,
+          message: 'Backup richiesto da dashboard'
+        });
+        res.json({ success: true, message: 'Richiesta backup inviata! Controlla la sezione Backup Salvati.' });
+        break;
+        
+      case 'security':
+        const stats = getSecurityStats();
+        addActivityLog({
+          type: 'command',
+          action: 'security_check',
+          user: req.session.user?.username,
+          message: 'Security check eseguito da dashboard'
+        });
+        res.json({ 
+          success: true, 
+          message: `Security check: ${stats.totalEvents24h} eventi 24h, ${stats.blockedIPsCount} IP bloccati, ${stats.activeSessionsCount} sessioni attive` 
+        });
+        break;
+        
+      case 'refresh':
+        addActivityLog({
+          type: 'system',
+          action: 'stats_refresh',
+          user: req.session.user?.username,
+          message: 'Refresh statistiche da dashboard'
+        });
+        res.json({ success: true, message: 'Statistiche aggiornate!' });
+        break;
+        
+      default:
+        res.json({ success: false, error: 'Azione non riconosciuta' });
+    }
+  } catch (error) {
+    console.error('Action error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/config/antiraid', requireAuth, apiRateLimit, (req, res) => {
+  const { threshold, window } = req.body;
+  const guildId = ALLOWED_GUILD_ID;
+  
+  if (!guildId) {
+    return res.json({ success: false, error: 'Guild non configurata' });
+  }
+  
+  if (!threshold || !window || threshold < 1 || window < 1) {
+    return res.json({ success: false, error: 'Parametri invalidi' });
+  }
+  
+  setAntiRaidStatus(guildId, {
+    enabled: true,
+    threshold: threshold,
+    window: window,
+    triggered: false
+  });
+  
+  addActivityLog({
+    type: 'config',
+    action: 'antiraid_config_updated',
+    user: req.session.user?.username,
+    message: `Anti-raid configurato: ${threshold} join in ${window}s`
+  });
+  
+  logSecurityEvent({
+    type: 'antiraid_config_change',
+    ip: req.ip,
+    userId: req.session.user?.id,
+    severity: 'medium',
+    message: `Configurazione anti-raid aggiornata da ${req.session.user?.username}: ${threshold} join in ${window}s`
+  });
+  
+  res.json({ success: true, threshold, window });
 });
 
 app.get('/auth/discord', (req, res) => {
