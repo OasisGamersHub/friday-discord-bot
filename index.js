@@ -18,7 +18,9 @@ import {
   saveServerSnapshot,
   getServerSnapshots,
   saveDailyMetrics,
-  getTrends
+  getTrends,
+  saveConfigBackup,
+  getConfigBackups
 } from './modules/database.js';
 import {
   getCachedAudit,
@@ -26,6 +28,13 @@ import {
   checkRateLimit,
   getCacheStats
 } from './modules/cache.js';
+import {
+  setBotOnline,
+  updateGuildStats,
+  addActivityLog,
+  setAntiRaidStatus,
+  getAntiRaidStatus
+} from './modules/sharedState.js';
 
 const client = new Client({
   intents: [
@@ -42,6 +51,7 @@ client.once('ready', async () => {
   console.log(`Bot connesso come ${client.user.tag}!`);
   console.log(`Presente in ${client.guilds.cache.size} server`);
   
+  setBotOnline();
   await connectDB();
   
   for (const guild of client.guilds.cache.values()) {
@@ -51,15 +61,182 @@ client.once('ready', async () => {
       messageCount: savedStats?.messageCount || 0,
       activeChannels: new Map(Object.entries(savedStats?.activeChannels || {}))
     });
+    
+    updateGuildStats(guild.id, {
+      name: guild.name,
+      memberCount: guild.memberCount,
+      channelCount: guild.channels.cache.size,
+      roleCount: guild.roles.cache.size,
+      ownerId: guild.ownerId,
+      icon: guild.iconURL()
+    });
   }
+  
+  addActivityLog({
+    type: 'bot_start',
+    message: `Bot avviato - ${client.guilds.cache.size} server connessi`
+  });
+  
+  setupScheduledTasks();
 });
 
-client.on('guildMemberAdd', member => {
+function setupScheduledTasks() {
+  setInterval(async () => {
+    for (const guild of client.guilds.cache.values()) {
+      updateGuildStats(guild.id, {
+        name: guild.name,
+        memberCount: guild.memberCount,
+        channelCount: guild.channels.cache.size,
+        roleCount: guild.roles.cache.size,
+        onlineCount: guild.approximatePresenceCount || 0
+      });
+    }
+  }, 60000);
+  
+  const now = new Date();
+  const msUntilSunday = ((7 - now.getDay()) % 7 || 7) * 24 * 60 * 60 * 1000 - 
+    now.getHours() * 60 * 60 * 1000 - now.getMinutes() * 60 * 1000;
+  
+  setTimeout(() => {
+    runWeeklyAudit();
+    setInterval(runWeeklyAudit, 7 * 24 * 60 * 60 * 1000);
+  }, msUntilSunday);
+  
+  console.log('Task schedulati configurati');
+}
+
+async function runWeeklyAudit() {
+  const oasisGuildId = process.env.OASIS_GUILD_ID;
+  if (!oasisGuildId) return;
+  
+  const guild = client.guilds.cache.get(oasisGuildId);
+  if (!guild) return;
+  
+  try {
+    const report = await getSecurityReport(guild);
+    const trends = await getTrends(guild.id);
+    
+    await saveAuditLog(guild.id, {
+      type: 'scheduled_weekly',
+      securityScore: report.securityScore,
+      issuesCount: report.issues.length
+    });
+    
+    addActivityLog({
+      type: 'scheduled_audit',
+      guildId: guild.id,
+      message: `Audit settimanale completato - Score: ${report.securityScore}/100`
+    });
+    
+    if (report.securityScore < 50) {
+      const owner = await guild.fetchOwner();
+      if (owner) {
+        try {
+          await owner.send(`⚠️ **Audit Settimanale Friday**\n\nIl tuo server "${guild.name}" ha un punteggio di sicurezza basso: **${report.securityScore}/100**\n\nUsa \`!audit\` nel server per vedere i dettagli.`);
+        } catch (e) {
+          console.log('Impossibile inviare DM al proprietario');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Errore audit settimanale:', error.message);
+  }
+}
+
+const joinTracker = new Map();
+const RAID_THRESHOLD = 10;
+const RAID_TIMEFRAME = 30000;
+
+client.on('guildMemberAdd', async member => {
   const stats = serverStats.get(member.guild.id);
   if (stats) {
     stats.joinHistory.push({ timestamp: Date.now(), memberId: member.id });
   }
+  
+  const guildId = member.guild.id;
+  const now = Date.now();
+  
+  if (!joinTracker.has(guildId)) {
+    joinTracker.set(guildId, []);
+  }
+  
+  const recentJoins = joinTracker.get(guildId);
+  recentJoins.push(now);
+  
+  const validJoins = recentJoins.filter(t => now - t < RAID_TIMEFRAME);
+  joinTracker.set(guildId, validJoins);
+  
+  if (validJoins.length >= RAID_THRESHOLD) {
+    const raidStatus = getAntiRaidStatus(guildId);
+    
+    if (!raidStatus.triggered) {
+      setAntiRaidStatus(guildId, {
+        enabled: true,
+        triggered: true,
+        triggeredAt: now,
+        joinCount: validJoins.length
+      });
+      
+      addActivityLog({
+        type: 'raid_detected',
+        guildId,
+        message: `RAID RILEVATO! ${validJoins.length} join in ${RAID_TIMEFRAME/1000}s`
+      });
+      
+      try {
+        const owner = await member.guild.fetchOwner();
+        if (owner) {
+          await owner.send(`🚨 **ALERT ANTI-RAID**\n\nRilevati **${validJoins.length} join** in ${RAID_TIMEFRAME/1000} secondi nel server "${member.guild.name}"!\n\nVerifica il server immediatamente.`);
+        }
+      } catch (e) {
+        console.log('Impossibile notificare owner per raid');
+      }
+      
+      setTimeout(() => {
+        setAntiRaidStatus(guildId, { enabled: true, triggered: false });
+      }, 5 * 60 * 1000);
+    }
+  }
+  
+  await handleWelcome(member);
 });
+
+async function handleWelcome(member) {
+  const guild = member.guild;
+  const hasMee6Welcome = guild.channels.cache.some(ch => 
+    ch.name.toLowerCase().includes('welcome') || 
+    ch.name.toLowerCase().includes('benvenuto')
+  );
+  
+  if (hasMee6Welcome) return;
+  
+  const welcomeChannel = guild.channels.cache.find(ch => 
+    ch.name.toLowerCase().includes('general') || 
+    ch.name.toLowerCase().includes('chat') ||
+    ch.name.toLowerCase().includes('lobby')
+  );
+  
+  if (!welcomeChannel || !welcomeChannel.isTextBased()) return;
+  
+  try {
+    const embed = new EmbedBuilder()
+      .setColor(0x2ecc71)
+      .setTitle(`👋 Benvenuto/a ${member.displayName}!`)
+      .setDescription(`Siamo felici di averti in **${guild.name}**!\n\nSei il membro #${guild.memberCount}`)
+      .setThumbnail(member.displayAvatarURL())
+      .setTimestamp();
+    
+    await welcomeChannel.send({ embeds: [embed] });
+    
+    addActivityLog({
+      type: 'welcome_sent',
+      guildId: guild.id,
+      message: `Welcome inviato a ${member.user.tag}`
+    });
+  } catch (e) {
+    console.log('Errore invio welcome:', e.message);
+  }
+}
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
@@ -446,6 +623,77 @@ client.on('messageCreate', async (message) => {
     }
   }
 
+  if (command === 'backup') {
+    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return message.reply('❌ Serve il permesso Amministratore.');
+    }
+
+    const loadingMsg = await message.reply('💾 Creazione backup configurazione...');
+    
+    try {
+      const roles = message.guild.roles.cache.map(role => ({
+        name: role.name,
+        id: role.id,
+        color: role.hexColor,
+        position: role.position,
+        permissions: role.permissions.toArray(),
+        hoist: role.hoist,
+        mentionable: role.mentionable
+      }));
+      
+      const channels = message.guild.channels.cache.map(channel => ({
+        name: channel.name,
+        id: channel.id,
+        type: channel.type,
+        parentId: channel.parentId,
+        position: channel.position,
+        permissionOverwrites: channel.permissionOverwrites?.cache 
+          ? Array.from(channel.permissionOverwrites.cache.values()).map(po => ({
+              id: po.id,
+              type: po.type,
+              allow: po.allow.toArray(),
+              deny: po.deny.toArray()
+            }))
+          : []
+      }));
+      
+      const backup = {
+        guildName: message.guild.name,
+        memberCount: message.guild.memberCount,
+        rolesCount: roles.length,
+        channelsCount: channels.length,
+        roles: roles,
+        channels: channels,
+        verificationLevel: message.guild.verificationLevel,
+        explicitContentFilter: message.guild.explicitContentFilter
+      };
+      
+      await saveConfigBackup(message.guild.id, backup);
+      
+      addActivityLog({
+        type: 'backup_created',
+        guildId: message.guild.id,
+        message: `Backup creato: ${roles.length} ruoli, ${channels.length} canali`
+      });
+      
+      const embed = new EmbedBuilder()
+        .setTitle('💾 Backup Configurazione Creato')
+        .setColor('#2ecc71')
+        .addFields(
+          { name: 'Ruoli Salvati', value: `${roles.length}`, inline: true },
+          { name: 'Canali Salvati', value: `${channels.length}`, inline: true },
+          { name: 'Membri', value: `${message.guild.memberCount}`, inline: true }
+        )
+        .setFooter({ text: 'Backup salvato su MongoDB - Massimo 10 backup conservati' })
+        .setTimestamp();
+      
+      await loadingMsg.edit({ content: '', embeds: [embed] });
+    } catch (error) {
+      console.error('Backup error:', error);
+      await loadingMsg.edit('❌ Errore durante la creazione del backup.');
+    }
+  }
+
   if (command === 'help') {
     const embed = new EmbedBuilder()
       .setTitle('📋 Comandi Disponibili')
@@ -460,6 +708,7 @@ client.on('messageCreate', async (message) => {
         { name: '!schema', value: 'Mappa struttura server', inline: true },
         { name: '!trend', value: 'Andamento e crescita', inline: true },
         { name: '!mee6', value: 'Check compatibilità MEE6', inline: true },
+        { name: '!backup', value: 'Backup configurazione', inline: true },
         { name: '!fix <azione>', value: 'Applica correzioni', inline: true }
       )
       .setFooter({ text: 'Friday + MEE6 = Simbiosi perfetta!' });

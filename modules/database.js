@@ -226,6 +226,64 @@ export async function getTrends(guildId) {
   }
 }
 
+export async function saveConfigBackup(guildId, config) {
+  if (!db) return false;
+  
+  try {
+    await db.collection('configBackups').insertOne({
+      guildId,
+      ...config,
+      createdAt: new Date()
+    });
+    
+    const count = await db.collection('configBackups').countDocuments({ guildId });
+    if (count > 10) {
+      const oldest = await db.collection('configBackups')
+        .find({ guildId })
+        .sort({ createdAt: 1 })
+        .limit(count - 10)
+        .toArray();
+      
+      if (oldest.length > 0) {
+        await db.collection('configBackups').deleteMany({
+          _id: { $in: oldest.map(s => s._id) }
+        });
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error('Errore salvataggio backup:', error.message);
+    return false;
+  }
+}
+
+export async function getConfigBackups(guildId, limit = 10) {
+  if (!db) return [];
+  
+  try {
+    return await db.collection('configBackups')
+      .find({ guildId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
+  } catch (error) {
+    console.error('Errore lettura backups:', error.message);
+    return [];
+  }
+}
+
+export async function getLatestBackup(guildId) {
+  if (!db) return null;
+  
+  try {
+    return await db.collection('configBackups')
+      .findOne({ guildId }, { sort: { createdAt: -1 } });
+  } catch (error) {
+    console.error('Errore lettura ultimo backup:', error.message);
+    return null;
+  }
+}
+
 export async function closeDB() {
   if (client) {
     await client.close();

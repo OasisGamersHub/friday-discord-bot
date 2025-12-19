@@ -2,6 +2,19 @@ import express from 'express';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
+import {
+  getBotStatus,
+  getGuildStats,
+  getAllGuildsStats,
+  getActivityLog,
+  getAntiRaidStatus
+} from './modules/sharedState.js';
+import {
+  getDailyMetrics,
+  getAuditHistory,
+  getConfigBackups,
+  getTrends
+} from './modules/database.js';
 
 const app = express();
 const PORT = 5000;
@@ -112,7 +125,24 @@ app.get('/', (req, res) => {
         <title>Friday Bot - Dashboard | Oasis Gamers Hub</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" href="https://cdn.discordapp.com/icons/1435348267268313090/a_icon.png" type="image/png">
-        <style>${styles}</style>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>${styles}
+          .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+          .tab { padding: 10px 20px; background: rgba(26, 58, 58, 0.6); border: 1px solid rgba(46, 204, 113, 0.2); border-radius: 8px; cursor: pointer; color: #8fa8a8; transition: all 0.2s; }
+          .tab:hover, .tab.active { background: rgba(46, 204, 113, 0.2); border-color: #4aba8a; color: #4aba8a; }
+          .tab-content { display: none; }
+          .tab-content.active { display: block; }
+          .chart-container { background: rgba(13, 38, 38, 0.5); border-radius: 12px; padding: 20px; margin-top: 16px; }
+          .activity-log { max-height: 400px; overflow-y: auto; }
+          .activity-item { padding: 12px; margin: 8px 0; background: rgba(26, 58, 58, 0.5); border-radius: 8px; border-left: 3px solid #4aba8a; }
+          .activity-item.raid { border-left-color: #e74c3c; background: rgba(231, 76, 60, 0.1); }
+          .activity-item.audit { border-left-color: #3498db; }
+          .activity-item .time { color: #5a7a7a; font-size: 0.8rem; }
+          .live-dot { display: inline-block; width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; margin-right: 8px; animation: pulse 2s infinite; }
+          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+          .raid-alert { background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; border-radius: 10px; padding: 16px; margin-bottom: 20px; display: none; }
+          .raid-alert.active { display: block; }
+        </style>
       </head>
       <body>
         <nav class="navbar">
@@ -128,74 +158,132 @@ app.get('/', (req, res) => {
         </nav>
         
         <div class="container">
-          <div class="card">
-            <h2>Benvenuto, ${req.session.user.username}!</h2>
-            <p style="color: #8fa8a8; margin-bottom: 24px; line-height: 1.6;">Gestisci <strong style="color: #4aba8a;">Oasis Gamers Hub</strong> con strumenti avanzati di analisi, sicurezza e intelligenza artificiale.</p>
+          <div id="raid-alert" class="raid-alert">
+            <strong>🚨 ALERT ANTI-RAID</strong>
+            <p id="raid-message">Rilevato possibile raid in corso!</p>
+          </div>
+          
+          <div class="tabs">
+            <div class="tab active" data-tab="overview">📊 Overview</div>
+            <div class="tab" data-tab="activity">📋 Attivita</div>
+            <div class="tab" data-tab="commands">⌨️ Comandi</div>
+            <div class="tab" data-tab="features">✨ Funzionalita</div>
+          </div>
+          
+          <div id="overview" class="tab-content active">
+            <div class="card">
+              <h2><span class="live-dot"></span>Statistiche Live</h2>
+              <div class="grid">
+                <div class="stat-box">
+                  <div class="value" id="bot-status">-</div>
+                  <div class="label">Stato Bot</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="member-count">-</div>
+                  <div class="label">Membri</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="channel-count">-</div>
+                  <div class="label">Canali</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="uptime">-</div>
+                  <div class="label">Uptime</div>
+                </div>
+              </div>
+            </div>
             
-            <div class="grid">
-              <div class="stat-box">
-                <div class="value">Friday</div>
-                <div class="label">Bot Connesso</div>
+            <div class="card">
+              <h2>Trend Crescita (30 giorni)</h2>
+              <div class="chart-container">
+                <canvas id="growthChart"></canvas>
               </div>
-              <div class="stat-box">
-                <div class="value" style="color: #2ecc71;">Online</div>
-                <div class="label">Stato Bot</div>
-              </div>
-              <div class="stat-box">
-                <div class="value">10</div>
-                <div class="label">Comandi Disponibili</div>
+            </div>
+            
+            <div class="card">
+              <h2>Ultimi Audit</h2>
+              <div id="audit-list" class="activity-log">
+                <p style="color: #5a7a7a;">Caricamento...</p>
               </div>
             </div>
           </div>
-
-          <div class="card">
-            <h2>Comandi Bot</h2>
-            <div class="command-list">
-              <div class="command-item"><code>!audit</code><span>Analisi completa con AI (3 fasi graduali)</span></div>
-              <div class="command-item"><code>!security</code><span>Report sicurezza e permessi</span></div>
-              <div class="command-item"><code>!age</code><span>Controllo separazione fasce d'eta</span></div>
-              <div class="command-item"><code>!schema</code><span>Mappa visuale struttura server</span></div>
-              <div class="command-item"><code>!trend</code><span>Andamento e crescita community</span></div>
-              <div class="command-item"><code>!mee6</code><span>Check compatibilita MEE6 Premium</span></div>
-              <div class="command-item"><code>!fix &lt;azione&gt;</code><span>Applica correzioni automatiche</span></div>
-              <div class="command-item"><code>!stats</code><span>Statistiche del server</span></div>
-              <div class="command-item"><code>!info</code><span>Informazioni server</span></div>
-              <div class="command-item"><code>!help</code><span>Lista tutti i comandi</span></div>
+          
+          <div id="activity" class="tab-content">
+            <div class="card">
+              <h2>Log Attivita</h2>
+              <div id="activity-log" class="activity-log">
+                <p style="color: #5a7a7a;">Caricamento...</p>
+              </div>
             </div>
           </div>
-
-          <div class="card">
-            <h2>Funzionalita Esclusive</h2>
-            <div class="features" style="margin-top: 16px;">
-              <div class="feature-card">
-                <div class="icon">🔍</div>
-                <h3>Analisi Struttura</h3>
-                <p>Scansione automatica di canali, ruoli e permessi</p>
+          
+          <div id="commands" class="tab-content">
+            <div class="card">
+              <h2>Comandi Bot</h2>
+              <div class="command-list">
+                <div class="command-item"><code>!audit</code><span>Analisi completa con AI (3 fasi graduali)</span></div>
+                <div class="command-item"><code>!security</code><span>Report sicurezza e permessi</span></div>
+                <div class="command-item"><code>!age</code><span>Controllo separazione fasce d'eta</span></div>
+                <div class="command-item"><code>!schema</code><span>Mappa visuale struttura server</span></div>
+                <div class="command-item"><code>!trend</code><span>Andamento e crescita community</span></div>
+                <div class="command-item"><code>!mee6</code><span>Check compatibilita MEE6 Premium</span></div>
+                <div class="command-item"><code>!fix &lt;azione&gt;</code><span>Applica correzioni automatiche</span></div>
+                <div class="command-item"><code>!stats</code><span>Statistiche del server</span></div>
+                <div class="command-item"><code>!backup</code><span>Crea backup configurazione</span></div>
+                <div class="command-item"><code>!help</code><span>Lista tutti i comandi</span></div>
               </div>
-              <div class="feature-card">
-                <div class="icon">🛡️</div>
-                <h3>Sicurezza Avanzata</h3>
-                <p>Rilevamento vulnerabilita e problemi di permessi</p>
-              </div>
-              <div class="feature-card">
-                <div class="icon">👥</div>
-                <h3>Protezione Eta</h3>
-                <p>Separazione automatica minorenni/adulti</p>
-              </div>
-              <div class="feature-card">
-                <div class="icon">🤖</div>
-                <h3>Suggerimenti AI</h3>
-                <p>Consigli intelligenti per la crescita</p>
-              </div>
-              <div class="feature-card">
-                <div class="icon">⚡</div>
-                <h3>Fix Automatici</h3>
-                <p>Correzioni one-click dei problemi</p>
-              </div>
-              <div class="feature-card">
-                <div class="icon">📊</div>
-                <h3>Trend Analysis</h3>
-                <p>Tracciamento evoluzione community</p>
+            </div>
+          </div>
+          
+          <div id="features" class="tab-content">
+            <div class="card">
+              <h2>Funzionalita Esclusive</h2>
+              <div class="features" style="margin-top: 16px;">
+                <div class="feature-card">
+                  <div class="icon">🔍</div>
+                  <h3>Analisi Struttura</h3>
+                  <p>Scansione automatica di canali, ruoli e permessi</p>
+                </div>
+                <div class="feature-card">
+                  <div class="icon">🛡️</div>
+                  <h3>Sicurezza Avanzata</h3>
+                  <p>Rilevamento vulnerabilita e problemi di permessi</p>
+                </div>
+                <div class="feature-card">
+                  <div class="icon">👥</div>
+                  <h3>Protezione Eta</h3>
+                  <p>Separazione automatica minorenni/adulti</p>
+                </div>
+                <div class="feature-card">
+                  <div class="icon">🤖</div>
+                  <h3>Suggerimenti AI</h3>
+                  <p>Consigli intelligenti per la crescita</p>
+                </div>
+                <div class="feature-card">
+                  <div class="icon">⚡</div>
+                  <h3>Fix Automatici</h3>
+                  <p>Correzioni one-click dei problemi</p>
+                </div>
+                <div class="feature-card">
+                  <div class="icon">📊</div>
+                  <h3>Trend Analysis</h3>
+                  <p>Tracciamento evoluzione community</p>
+                </div>
+                <div class="feature-card">
+                  <div class="icon">🚨</div>
+                  <h3>Anti-Raid</h3>
+                  <p>Protezione automatica da attacchi</p>
+                </div>
+                <div class="feature-card">
+                  <div class="icon">📅</div>
+                  <h3>Audit Schedulato</h3>
+                  <p>Report automatico settimanale</p>
+                </div>
+                <div class="feature-card">
+                  <div class="icon">💾</div>
+                  <h3>Backup Config</h3>
+                  <p>Salvataggio automatico ruoli e permessi</p>
+                </div>
               </div>
             </div>
           </div>
@@ -204,6 +292,130 @@ app.get('/', (req, res) => {
             <p>Friday Bot per <strong>Oasis Gamers Hub</strong> | Sviluppato con ❤️</p>
           </div>
         </div>
+        
+        <script>
+          document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+              document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+              document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+              tab.classList.add('active');
+              document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+          });
+          
+          let growthChart = null;
+          
+          async function loadStatus() {
+            try {
+              const res = await fetch('/api/status');
+              const data = await res.json();
+              
+              document.getElementById('bot-status').textContent = data.bot?.status === 'online' ? 'Online' : 'Offline';
+              document.getElementById('bot-status').style.color = data.bot?.status === 'online' ? '#2ecc71' : '#e74c3c';
+              
+              if (data.guild) {
+                document.getElementById('member-count').textContent = data.guild.memberCount || '-';
+                document.getElementById('channel-count').textContent = data.guild.channelCount || '-';
+              }
+              
+              if (data.bot?.uptime) {
+                const hours = Math.floor(data.bot.uptime / 3600000);
+                const mins = Math.floor((data.bot.uptime % 3600000) / 60000);
+                document.getElementById('uptime').textContent = hours + 'h ' + mins + 'm';
+              }
+              
+              if (data.antiRaid?.triggered) {
+                document.getElementById('raid-alert').classList.add('active');
+              } else {
+                document.getElementById('raid-alert').classList.remove('active');
+              }
+            } catch (e) { console.log('Status error:', e); }
+          }
+          
+          async function loadActivity() {
+            try {
+              const res = await fetch('/api/activity');
+              const data = await res.json();
+              
+              const container = document.getElementById('activity-log');
+              if (data.length === 0) {
+                container.innerHTML = '<p style="color: #5a7a7a;">Nessuna attivita recente</p>';
+                return;
+              }
+              
+              container.innerHTML = data.map(item => {
+                const date = new Date(item.timestamp);
+                const time = date.toLocaleString('it-IT');
+                const typeClass = item.type.includes('raid') ? 'raid' : item.type.includes('audit') ? 'audit' : '';
+                return '<div class="activity-item ' + typeClass + '"><div class="time">' + time + '</div><div>' + item.message + '</div></div>';
+              }).join('');
+            } catch (e) { console.log('Activity error:', e); }
+          }
+          
+          async function loadMetrics() {
+            try {
+              const res = await fetch('/api/metrics?days=30');
+              const data = await res.json();
+              
+              if (data.metrics && data.metrics.length > 0) {
+                const labels = data.metrics.map(m => new Date(m.date).toLocaleDateString('it-IT', {day: '2-digit', month: '2-digit'}));
+                const members = data.metrics.map(m => m.memberCount || 0);
+                
+                const ctx = document.getElementById('growthChart').getContext('2d');
+                if (growthChart) growthChart.destroy();
+                growthChart = new Chart(ctx, {
+                  type: 'line',
+                  data: {
+                    labels: labels,
+                    datasets: [{
+                      label: 'Membri',
+                      data: members,
+                      borderColor: '#4aba8a',
+                      backgroundColor: 'rgba(74, 186, 138, 0.1)',
+                      fill: true,
+                      tension: 0.3
+                    }]
+                  },
+                  options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#8fa8a8' } } },
+                    scales: {
+                      x: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } },
+                      y: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } }
+                    }
+                  }
+                });
+              }
+            } catch (e) { console.log('Metrics error:', e); }
+          }
+          
+          async function loadAudits() {
+            try {
+              const res = await fetch('/api/audits?limit=5');
+              const data = await res.json();
+              
+              const container = document.getElementById('audit-list');
+              if (data.length === 0) {
+                container.innerHTML = '<p style="color: #5a7a7a;">Nessun audit recente</p>';
+                return;
+              }
+              
+              container.innerHTML = data.map(audit => {
+                const date = new Date(audit.createdAt);
+                const time = date.toLocaleString('it-IT');
+                return '<div class="activity-item audit"><div class="time">' + time + '</div><div>Score: <strong>' + (audit.securityScore || '-') + '/100</strong> - ' + (audit.type || 'audit') + '</div></div>';
+              }).join('');
+            } catch (e) { console.log('Audits error:', e); }
+          }
+          
+          loadStatus();
+          loadActivity();
+          loadMetrics();
+          loadAudits();
+          
+          setInterval(loadStatus, 30000);
+          setInterval(loadActivity, 60000);
+        </script>
       </body>
       </html>
     `);
@@ -282,6 +494,66 @@ app.get('/', (req, res) => {
 function generateState() {
   return crypto.randomBytes(16).toString('hex');
 }
+
+function requireAuth(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Non autenticato' });
+  }
+  next();
+}
+
+app.get('/api/status', requireAuth, (req, res) => {
+  const status = getBotStatus();
+  const guildId = ALLOWED_GUILD_ID;
+  const guildStats = guildId ? getGuildStats(guildId) : null;
+  const antiRaid = guildId ? getAntiRaidStatus(guildId) : null;
+  
+  res.json({
+    bot: status,
+    guild: guildStats,
+    antiRaid
+  });
+});
+
+app.get('/api/activity', requireAuth, (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  const activity = getActivityLog(limit);
+  res.json(activity);
+});
+
+app.get('/api/metrics', requireAuth, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ metrics: [], trends: null });
+  }
+  
+  const days = parseInt(req.query.days) || 30;
+  const metrics = await getDailyMetrics(guildId, days);
+  const trends = await getTrends(guildId);
+  
+  res.json({ metrics, trends });
+});
+
+app.get('/api/audits', requireAuth, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json([]);
+  }
+  
+  const limit = parseInt(req.query.limit) || 10;
+  const audits = await getAuditHistory(guildId, limit);
+  res.json(audits);
+});
+
+app.get('/api/backups', requireAuth, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json([]);
+  }
+  
+  const backups = await getConfigBackups(guildId);
+  res.json(backups);
+});
 
 app.get('/auth/discord', (req, res) => {
   const state = generateState();

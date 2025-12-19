@@ -1,8 +1,8 @@
-# Discord Community Bot
+# Discord Community Bot (Friday)
 
 ## Overview
 
-Bot Discord avanzato per la gestione e analisi di server community. Offre audit di sicurezza, controllo separazione fasce d'età, suggerimenti AI per la crescita della community, e azioni automatiche per correggere problemi. Include una dashboard web con autenticazione OAuth2 Discord.
+Bot Discord avanzato per la gestione e analisi di server community Oasis Gamers Hub. Offre audit di sicurezza, controllo separazione fasce d'età, suggerimenti AI per la crescita della community, azioni automatiche per correggere problemi, protezione anti-raid, backup configurazione e dashboard web interattiva con autenticazione OAuth2 Discord.
 
 ## User Preferences
 
@@ -10,6 +10,16 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-19**: Dashboard interattiva con statistiche live
+  - Interfaccia a tab (Overview, Attività, Comandi, Funzionalità)
+  - Grafici Chart.js per trend crescita 30 giorni
+  - API endpoints per dati live (/api/status, /api/activity, /api/metrics, /api/audits, /api/backups)
+  - Alert anti-raid in tempo reale sulla dashboard
+  - Modulo sharedState.js per comunicazione bot-to-dashboard
+- **2024-12-19**: Sistema anti-raid e backup
+  - Protezione anti-raid: rileva 10+ join in 30 secondi, notifica owner
+  - Comando `!backup` per salvare ruoli, canali e permessi su MongoDB (max 10 backup)
+  - Funzioni database per gestione backup configurazione
 - **2024-12-19**: Ottimizzazioni scalabilità e performance
   - Nuovo modulo cache.js per caching risultati audit (6 ore TTL)
   - Rate limiting su comandi costosi (audit: 10 min, mee6: 5 min)
@@ -48,10 +58,12 @@ Preferred communication style: Simple, everyday language (Italian)
   - `!trend` - Andamento e trend crescita community
   - `!mee6` - Check compatibilità con MEE6 Premium (simbiosi, funzioni rilevate, conflitti)
   - `!fix <azione>` - Applica correzioni automatiche (riusa ruoli esistenti)
+  - `!backup` - Crea backup configurazione server (ruoli, canali, permessi)
   - `!help` - Lista comandi
 - Tracciamento statistiche in-memory e su MongoDB (join, messaggi, attività canali)
 - Sistema di snapshot per tracciare evoluzione struttura nel tempo
 - Trend analysis con confronto metriche settimanali
+- Sistema anti-raid automatico con notifica owner
 
 ### Server Analyzer Module (modules/serverAnalyzer.js)
 - `findExistingAgeRoles()` - Cerca ruoli età già esistenti (fuzzy matching)
@@ -73,11 +85,26 @@ Preferred communication style: Simple, everyday language (Italian)
   - Verifica conflitti di permessi/gerarchia ruoli
   - Genera punteggio simbiosi e raccomandazioni
 
+### Shared State Module (modules/sharedState.js)
+- Stato condiviso tra bot Discord e web server
+- `setBotOnline()` / `getBotStatus()` - Stato bot e uptime
+- `updateGuildStats()` / `getGuildStats()` - Statistiche guild
+- `addActivityLog()` / `getActivityLog()` - Log attività per dashboard
+- `setAntiRaidStatus()` / `getAntiRaidStatus()` - Stato anti-raid
+
 ### Web Dashboard (server.js)
 - Express 5.x su porta 5000
 - Autenticazione OAuth2 Discord con protezione CSRF (state parameter)
 - Sessioni sicure con express-session
-- Dashboard con overview comandi e funzionalità
+- Dashboard interattiva con 4 tab (Overview, Attività, Comandi, Funzionalità)
+- Grafici Chart.js per trend crescita 30 giorni
+- API endpoints protetti per dati live:
+  - GET /api/status - Stato bot e guild
+  - GET /api/activity - Log attività recenti
+  - GET /api/metrics - Metriche 30 giorni per grafici
+  - GET /api/audits - Storico audit
+  - GET /api/backups - Lista backup configurazione
+- Alert anti-raid in tempo reale
 
 ### AI Integration
 - OpenAI via Replit AI Integrations
@@ -99,14 +126,16 @@ Preferred communication style: Simple, everyday language (Italian)
 ```
 /
 ├── index.js              # Bot Discord principale
-├── server.js             # Web server con OAuth2
+├── server.js             # Web server con OAuth2 e API
 ├── start.js              # Script avvio produzione
 ├── Dockerfile            # Container per Fly.io
 ├── fly.toml              # Config Fly.io
 ├── package.json          # Dipendenze Node.js
 ├── modules/
 │   ├── serverAnalyzer.js # Modulo analisi server
-│   └── database.js       # Connessione MongoDB
+│   ├── database.js       # Connessione MongoDB + funzioni backup
+│   ├── cache.js          # Cache audit con TTL
+│   └── sharedState.js    # Stato condiviso bot-dashboard
 └── .replit_integration_files/  # File integrazione AI (non modificare)
 ```
 
