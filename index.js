@@ -5,9 +5,20 @@ import {
   getSecurityReport, 
   getAIRecommendations,
   executeAction,
-  formatReport 
+  formatReport,
+  generateServerSchema,
+  findExistingAgeRoles
 } from './modules/serverAnalyzer.js';
-import { connectDB, saveServerStats, getServerStats, saveAuditLog } from './modules/database.js';
+import { 
+  connectDB, 
+  saveServerStats, 
+  getServerStats, 
+  saveAuditLog,
+  saveServerSnapshot,
+  getServerSnapshots,
+  saveDailyMetrics,
+  getTrends
+} from './modules/database.js';
 
 const client = new Client({
   intents: [
@@ -51,6 +62,14 @@ client.on('messageCreate', async (message) => {
     stats.messageCount++;
     const channelCount = stats.activeChannels.get(message.channel.id) || 0;
     stats.activeChannels.set(message.channel.id, channelCount + 1);
+    
+    if (stats.messageCount % 50 === 0) {
+      await saveDailyMetrics(message.guild.id, {
+        memberCount: message.guild.memberCount,
+        messageCount: stats.messageCount,
+        activeChannels: stats.activeChannels.size
+      });
+    }
   }
 
   const prefix = '!';
@@ -76,7 +95,8 @@ client.on('messageCreate', async (message) => {
     
     try {
       const report = await getSecurityReport(message.guild);
-      const aiRecommendations = await getAIRecommendations(report, message.guild);
+      const trends = await getTrends(message.guild.id);
+      const aiRecommendations = await getAIRecommendations(report, message.guild, trends);
       
       const formattedReport = formatReport(report, aiRecommendations);
       
@@ -227,6 +247,85 @@ client.on('messageCreate', async (message) => {
     await message.reply({ embeds: [embed] });
   }
 
+  if (command === 'schema') {
+    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return message.reply('❌ Serve il permesso Amministratore.');
+    }
+
+    const loadingMsg = await message.reply('🗺️ Generazione schema server...');
+    
+    try {
+      const structure = await analyzeServerStructure(message.guild);
+      const schema = generateServerSchema(structure);
+      
+      await saveServerSnapshot(message.guild.id, {
+        memberCount: structure.memberCount,
+        categories: structure.categories.length,
+        textChannels: structure.textChannels.length,
+        voiceChannels: structure.voiceChannels.length,
+        roles: structure.roles.length
+      });
+      
+      if (schema.length > 2000) {
+        const chunks = schema.match(/[\s\S]{1,1900}/g);
+        await loadingMsg.edit(chunks[0]);
+        for (let i = 1; i < chunks.length; i++) {
+          await message.channel.send(chunks[i]);
+        }
+      } else {
+        await loadingMsg.edit(schema);
+      }
+    } catch (error) {
+      console.error('Schema error:', error);
+      await loadingMsg.edit('❌ Errore durante la generazione dello schema.');
+    }
+  }
+
+  if (command === 'trend' || command === 'trends') {
+    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return message.reply('❌ Serve il permesso Amministratore.');
+    }
+
+    const trends = await getTrends(message.guild.id);
+    const snapshots = await getServerSnapshots(message.guild.id, 5);
+    
+    const embed = new EmbedBuilder()
+      .setTitle('📈 Trend e Andamento Community')
+      .setColor('#3498db');
+
+    if (trends) {
+      const memberEmoji = parseFloat(trends.memberTrend) >= 0 ? '📈' : '📉';
+      const msgEmoji = parseFloat(trends.messageTrend) >= 0 ? '📈' : '📉';
+      
+      embed.addFields(
+        { name: `${memberEmoji} Crescita Membri`, value: `${trends.memberTrend}% (ultimi 14 giorni)`, inline: true },
+        { name: `${msgEmoji} Trend Messaggi`, value: `${trends.messageTrend}%`, inline: true },
+        { name: '📊 Dati Raccolti', value: `${trends.dataPoints} giorni`, inline: true }
+      );
+    } else {
+      embed.setDescription('⏳ Dati insufficienti per calcolare i trend.\nContinua ad usare il bot per raccogliere metriche!');
+    }
+
+    if (snapshots.length > 0) {
+      const latest = snapshots[0];
+      const oldest = snapshots[snapshots.length - 1];
+      
+      if (snapshots.length > 1) {
+        const memberChange = latest.memberCount - oldest.memberCount;
+        const channelChange = (latest.textChannels + latest.voiceChannels) - (oldest.textChannels + oldest.voiceChannels);
+        
+        embed.addFields({
+          name: '📸 Confronto Snapshot',
+          value: `Membri: ${memberChange >= 0 ? '+' : ''}${memberChange}\nCanali: ${channelChange >= 0 ? '+' : ''}${channelChange}\n(${snapshots.length} snapshot salvati)`
+        });
+      }
+    }
+
+    embed.setFooter({ text: 'Usa !audit per analisi AI con suggerimenti scalabili' });
+    
+    await message.reply({ embeds: [embed] });
+  }
+
   if (command === 'help') {
     const embed = new EmbedBuilder()
       .setTitle('📋 Comandi Disponibili')
@@ -238,6 +337,8 @@ client.on('messageCreate', async (message) => {
         { name: '!audit', value: 'Analisi completa con AI', inline: true },
         { name: '!security', value: 'Report sicurezza', inline: true },
         { name: '!age', value: 'Controllo separazione età', inline: true },
+        { name: '!schema', value: 'Mappa struttura server', inline: true },
+        { name: '!trend', value: 'Andamento e crescita', inline: true },
         { name: '!fix <azione>', value: 'Applica correzioni', inline: true }
       )
       .setFooter({ text: 'Usa !fix senza argomenti per vedere le azioni disponibili' });

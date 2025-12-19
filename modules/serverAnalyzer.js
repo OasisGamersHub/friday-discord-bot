@@ -7,9 +7,27 @@ const openai = new OpenAI({
 });
 
 const AGE_ROLES = {
-  minors: ['minore', 'under18', 'minorenne', '-18', 'teen', 'giovane'],
-  adults: ['adulto', 'over18', 'maggiorenne', '+18', '18+', 'adult', 'nsfw']
+  minors: ['minore', 'under18', 'minorenne', '-18', 'teen', 'giovane', 'under 18', 'minorenni', 'ragazzo', 'ragazza'],
+  adults: ['adulto', 'over18', 'maggiorenne', '+18', '18+', 'adult', 'nsfw', 'over 18', 'adulti', 'mature']
 };
+
+export function findExistingAgeRoles(guild) {
+  const roles = guild.roles.cache;
+  let minorRole = null;
+  let adultRole = null;
+  
+  roles.forEach(role => {
+    const lowerName = role.name.toLowerCase();
+    if (!minorRole && AGE_ROLES.minors.some(tag => lowerName.includes(tag))) {
+      minorRole = role;
+    }
+    if (!adultRole && AGE_ROLES.adults.some(tag => lowerName.includes(tag))) {
+      adultRole = role;
+    }
+  });
+  
+  return { minorRole, adultRole };
+}
 
 export async function analyzeServerStructure(guild) {
   const channels = guild.channels.cache;
@@ -220,15 +238,30 @@ function calculateSecurityScore(securityIssues, ageIssues) {
   return Math.max(0, score);
 }
 
-export async function getAIRecommendations(report, guild) {
-  const prompt = `Sei un esperto di community Discord. Analizza questo report del server "${guild.name}" e fornisci raccomandazioni specifiche e attuabili.
+export async function getAIRecommendations(report, guild, trends = null) {
+  const existingAgeRoles = findExistingAgeRoles(guild);
+  const hasExistingRoles = existingAgeRoles.minorRole || existingAgeRoles.adultRole;
+  
+  const prompt = `Sei un esperto di community Discord. Analizza questo report del server "${guild.name}" e fornisci raccomandazioni GRADUALI e SCALABILI.
 
-STRUTTURA SERVER:
+PRINCIPI FONDAMENTALI:
+- NON suggerire misure drastiche o stravolgimenti
+- MIGLIORA ciò che esiste già invece di creare da zero
+- Suggerisci cambiamenti INCREMENTALI e poco invasivi
+- Considera la CRESCITA FUTURA della community
+- Prioritizza azioni che non disturbano l'esperienza attuale degli utenti
+
+STRUTTURA SERVER ATTUALE:
 - Membri: ${report.structure.memberCount}
 - Categorie: ${report.structure.categories.length}
 - Canali testo: ${report.structure.textChannels.length}
 - Canali vocali: ${report.structure.voiceChannels.length}
 - Ruoli: ${report.structure.roles.length}
+
+RUOLI ETÀ GIÀ ESISTENTI:
+- Ruolo minorenni esistente: ${existingAgeRoles.minorRole?.name || 'Nessuno'}
+- Ruolo maggiorenni esistente: ${existingAgeRoles.adultRole?.name || 'Nessuno'}
+- ${hasExistingRoles ? 'IMPORTANTE: Usa e migliora questi ruoli esistenti invece di crearne nuovi!' : 'Nessun ruolo età rilevato'}
 
 PROBLEMI SICUREZZA (${report.securityIssues.length}):
 ${report.securityIssues.map(i => `- [${i.severity}] ${i.message}`).join('\n') || 'Nessuno'}
@@ -241,18 +274,25 @@ SEPARAZIONE ETÀ:
 
 PUNTEGGIO SICUREZZA: ${report.score}/100
 
-Fornisci:
-1. 3-5 migliorie prioritarie per la struttura del server
-2. Strategie per aumentare engagement e crescita
-3. Best practices per community sicure e scalabili
-4. Azioni concrete che posso eseguire automaticamente
+${trends ? `TREND CRESCITA (ultimi 14 giorni):
+- Crescita membri: ${trends.memberTrend}%
+- Trend messaggi: ${trends.messageTrend}%
+- Punti dati: ${trends.dataPoints}` : 'Trend non disponibili (dati insufficienti)'}
+
+Fornisci raccomandazioni in 3 FASI (breve, medio, lungo termine):
+1. FASE 1 (Immediato): Piccole migliorie che non disturbano, facili da implementare
+2. FASE 2 (1-2 settimane): Miglioramenti strutturali graduali
+3. FASE 3 (1 mese+): Strategie di crescita e scalabilità
 
 Rispondi in italiano in formato JSON con questa struttura:
 {
-  "priorityActions": [{"title": "", "description": "", "canAutomate": true/false, "automationAction": ""}],
-  "growthStrategies": [{"title": "", "description": ""}],
-  "bestPractices": [{"title": "", "description": ""}],
-  "overallAssessment": ""
+  "phase1": [{"title": "", "description": "", "effort": "basso/medio", "canAutomate": true/false, "automationAction": ""}],
+  "phase2": [{"title": "", "description": "", "effort": "medio", "canAutomate": true/false}],
+  "phase3": [{"title": "", "description": "", "effort": "alto", "scalabilityTip": ""}],
+  "growthProjection": "",
+  "overallAssessment": "",
+  "existingStrengths": [""],
+  "avoidActions": [""]
 }`;
 
   try {
@@ -281,19 +321,43 @@ export async function executeAction(guild, action, params = {}) {
   try {
     switch (action) {
       case 'createAgeRoles':
-        const minorRole = await guild.roles.create({
-          name: 'Under18',
-          color: '#3498db',
-          reason: 'Creato automaticamente per separazione età'
-        });
-        const adultRole = await guild.roles.create({
-          name: 'Over18',
-          color: '#e74c3c',
-          reason: 'Creato automaticamente per separazione età'
-        });
+        const existingRoles = findExistingAgeRoles(guild);
+        let minorRole = existingRoles.minorRole;
+        let adultRole = existingRoles.adultRole;
+        const created = [];
+        const reused = [];
+        
+        if (minorRole) {
+          reused.push(`"${minorRole.name}" (minorenni)`);
+        } else {
+          minorRole = await guild.roles.create({
+            name: 'Under18',
+            color: '#3498db',
+            reason: 'Creato automaticamente per separazione età'
+          });
+          created.push('Under18');
+        }
+        
+        if (adultRole) {
+          reused.push(`"${adultRole.name}" (maggiorenni)`);
+        } else {
+          adultRole = await guild.roles.create({
+            name: 'Over18',
+            color: '#e74c3c',
+            reason: 'Creato automaticamente per separazione età'
+          });
+          created.push('Over18');
+        }
+        
         results.success = true;
-        results.message = 'Ruoli età creati con successo';
-        results.details = { minorRole: minorRole.name, adultRole: adultRole.name };
+        if (reused.length > 0 && created.length > 0) {
+          results.message = `Ruoli riutilizzati: ${reused.join(', ')}. Nuovi ruoli creati: ${created.join(', ')}`;
+        } else if (reused.length > 0) {
+          results.message = `Ruoli esistenti riutilizzati: ${reused.join(', ')}. Nessun nuovo ruolo necessario!`;
+        } else {
+          results.message = `Nuovi ruoli creati: ${created.join(', ')}`;
+        }
+        results.details = { minorRole: minorRole.name, adultRole: adultRole.name, reused: reused.length, created: created.length };
         break;
 
       case 'blockMinorsFromNSFW':
@@ -363,15 +427,91 @@ export function formatReport(report, aiRecommendations) {
     });
   }
 
-  if (aiRecommendations && aiRecommendations.priorityActions) {
-    text += `\n**💡 Raccomandazioni AI:**\n`;
-    aiRecommendations.priorityActions.slice(0, 3).forEach((action, i) => {
-      text += `${i + 1}. **${action.title}**\n   ${action.description}\n`;
-      if (action.canAutomate) {
-        text += `   ✅ *Automatizzabile con* \`!fix ${action.automationAction}\`\n`;
-      }
-    });
+  if (aiRecommendations) {
+    if (aiRecommendations.existingStrengths?.length > 0) {
+      text += `\n**💪 Punti di forza esistenti:**\n`;
+      aiRecommendations.existingStrengths.slice(0, 3).forEach(s => {
+        text += `✅ ${s}\n`;
+      });
+    }
+    
+    if (aiRecommendations.phase1?.length > 0) {
+      text += `\n**🚀 FASE 1 - Azioni immediate:**\n`;
+      aiRecommendations.phase1.slice(0, 3).forEach((action, i) => {
+        text += `${i + 1}. **${action.title}** (sforzo: ${action.effort})\n   ${action.description}\n`;
+        if (action.canAutomate && action.automationAction) {
+          text += `   ✅ *Automatizzabile con* \`!fix ${action.automationAction}\`\n`;
+        }
+      });
+    }
+    
+    if (aiRecommendations.phase2?.length > 0) {
+      text += `\n**📅 FASE 2 - Prossime settimane:**\n`;
+      aiRecommendations.phase2.slice(0, 2).forEach((action, i) => {
+        text += `${i + 1}. **${action.title}**\n   ${action.description}\n`;
+      });
+    }
+    
+    if (aiRecommendations.growthProjection) {
+      text += `\n**📈 Proiezione crescita:** ${aiRecommendations.growthProjection}\n`;
+    }
+    
+    if (aiRecommendations.avoidActions?.length > 0) {
+      text += `\n**⛔ Da evitare:**\n`;
+      aiRecommendations.avoidActions.slice(0, 2).forEach(a => {
+        text += `• ${a}\n`;
+      });
+    }
   }
 
+  text += `\n*Usa \`!schema\` per vedere la struttura completa e \`!trend\` per i trend di crescita*`;
+
   return text;
+}
+
+export function generateServerSchema(structure) {
+  let schema = `**🗺️ SCHEMA SERVER: ${structure.name}**\n\n`;
+  
+  schema += `**📊 Panoramica:**\n`;
+  schema += `\`\`\`\n`;
+  schema += `Membri: ${structure.memberCount}\n`;
+  schema += `Categorie: ${structure.categories.length}\n`;
+  schema += `Canali Testo: ${structure.textChannels.length}\n`;
+  schema += `Canali Voice: ${structure.voiceChannels.length}\n`;
+  schema += `Ruoli: ${structure.roles.length}\n`;
+  schema += `\`\`\`\n\n`;
+  
+  schema += `**📁 Categorie e Canali:**\n`;
+  const byCategory = {};
+  structure.textChannels.forEach(ch => {
+    const cat = ch.category || 'Senza categoria';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push({ name: ch.name, type: 'text', nsfw: ch.nsfw });
+  });
+  structure.voiceChannels.forEach(ch => {
+    const cat = ch.category || 'Senza categoria';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push({ name: ch.name, type: 'voice' });
+  });
+  
+  Object.entries(byCategory).forEach(([cat, channels]) => {
+    schema += `\n📂 **${cat}**\n`;
+    channels.forEach(ch => {
+      const icon = ch.type === 'voice' ? '🔊' : (ch.nsfw ? '🔞' : '💬');
+      schema += `   ${icon} ${ch.name}\n`;
+    });
+  });
+  
+  schema += `\n**🎭 Ruoli principali:**\n`;
+  const importantRoles = structure.roles
+    .filter(r => !r.isEveryone && r.memberCount > 0)
+    .sort((a, b) => b.position - a.position)
+    .slice(0, 10);
+  
+  importantRoles.forEach(role => {
+    const warning = role.dangerousPerms.length > 0 ? ' ⚠️' : '';
+    schema += `• **${role.name}** (${role.memberCount} membri)${warning}\n`;
+  });
+  
+  return schema;
 }

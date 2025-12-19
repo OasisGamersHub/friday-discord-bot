@@ -29,24 +29,30 @@ Preferred communication style: Simple, everyday language (Italian)
   - `!ping` - Test connessione
   - `!info` - Info server
   - `!stats` - Statistiche server
-  - `!audit` - Analisi completa con AI
+  - `!audit` - Analisi completa con AI (suggerimenti graduali in 3 fasi)
   - `!security` - Report sicurezza
   - `!age` - Controllo separazione fasce d'età
-  - `!fix <azione>` - Applica correzioni automatiche
+  - `!schema` - Mappa visuale struttura server (categorie, canali, ruoli)
+  - `!trend` - Andamento e trend crescita community
+  - `!fix <azione>` - Applica correzioni automatiche (riusa ruoli esistenti)
   - `!help` - Lista comandi
-- Tracciamento statistiche in-memory (join, messaggi, attività canali)
+- Tracciamento statistiche in-memory e su MongoDB (join, messaggi, attività canali)
+- Sistema di snapshot per tracciare evoluzione struttura nel tempo
+- Trend analysis con confronto metriche settimanali
 
 ### Server Analyzer Module (modules/serverAnalyzer.js)
+- `findExistingAgeRoles()` - Cerca ruoli età già esistenti (fuzzy matching)
 - `analyzeServerStructure()` - Mappa canali, categorie, ruoli, permessi
 - `checkAgeSeparation()` - Verifica separazione minorenni/adulti
 - `getSecurityReport()` - Report completo sicurezza con punteggio
-- `getAIRecommendations()` - Suggerimenti AI tramite OpenAI
-- `executeAction()` - Esegue correzioni automatiche:
-  - createAgeRoles - Crea ruoli Under18/Over18
+- `getAIRecommendations()` - Suggerimenti AI graduali in 3 fasi (breve/medio/lungo termine)
+- `executeAction()` - Esegue correzioni automatiche (riusa ruoli esistenti):
+  - createAgeRoles - Riusa o crea ruoli Under18/Over18
   - blockMinorsFromNSFW - Blocca minorenni da canali NSFW
   - increaseVerification - Aumenta livello verifica
   - disableEveryoneInvites - Disabilita inviti per @everyone
-- `formatReport()` - Formatta report per Discord
+- `formatReport()` - Formatta report per Discord con fasi
+- `generateServerSchema()` - Genera mappa visuale struttura server
 
 ### Web Dashboard (server.js)
 - Express 5.x su porta 5000
