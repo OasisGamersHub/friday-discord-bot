@@ -7,6 +7,7 @@ import {
   executeAction,
   formatReport 
 } from './modules/serverAnalyzer.js';
+import { connectDB, saveServerStats, getServerStats, saveAuditLog } from './modules/database.js';
 
 const client = new Client({
   intents: [
@@ -19,17 +20,20 @@ const client = new Client({
 
 const serverStats = new Map();
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`Bot connesso come ${client.user.tag}!`);
   console.log(`Presente in ${client.guilds.cache.size} server`);
   
-  client.guilds.cache.forEach(guild => {
+  await connectDB();
+  
+  for (const guild of client.guilds.cache.values()) {
+    const savedStats = await getServerStats(guild.id);
     serverStats.set(guild.id, {
-      joinHistory: [],
-      messageCount: 0,
-      activeChannels: new Map()
+      joinHistory: savedStats?.joinHistory || [],
+      messageCount: savedStats?.messageCount || 0,
+      activeChannels: new Map(Object.entries(savedStats?.activeChannels || {}))
     });
-  });
+  }
 });
 
 client.on('guildMemberAdd', member => {
@@ -87,6 +91,12 @@ client.on('messageCreate', async (message) => {
       }
       
       global.lastAuditReport = { report, aiRecommendations, guildId: message.guild.id };
+      
+      await saveAuditLog(message.guild.id, { 
+        score: report.score, 
+        issues: report.securityIssues.length,
+        ageSeparation: report.ageSeparation.configured 
+      });
       
     } catch (error) {
       console.error('Audit error:', error);

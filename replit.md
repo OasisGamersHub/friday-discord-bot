@@ -10,6 +10,10 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12**: Aggiunta configurazione deploy Fly.io + MongoDB
+  - Dockerfile e fly.toml per deploy su Fly.io
+  - Modulo database.js per persistenza dati su MongoDB Atlas
+  - Script start.js per avvio produzione
 - **2024-12**: Implementate funzionalità complete di analisi server
   - Modulo serverAnalyzer.js per analisi struttura, sicurezza, e separazione età
   - Integrazione OpenAI per suggerimenti AI intelligenti
@@ -61,6 +65,7 @@ Preferred communication style: Simple, everyday language (Italian)
 - `DISCORD_CLIENT_ID` - Client ID applicazione Discord
 - `DISCORD_CLIENT_SECRET` - Client Secret per OAuth2
 - `SESSION_SECRET` - Chiave per sessioni web
+- `MONGODB_URI` - (opzionale) Connection string MongoDB Atlas
 - `AI_INTEGRATIONS_OPENAI_API_KEY` - (automatico da Replit)
 - `AI_INTEGRATIONS_OPENAI_BASE_URL` - (automatico da Replit)
 
@@ -70,11 +75,28 @@ Preferred communication style: Simple, everyday language (Italian)
 /
 ├── index.js              # Bot Discord principale
 ├── server.js             # Web server con OAuth2
+├── start.js              # Script avvio produzione
+├── Dockerfile            # Container per Fly.io
+├── fly.toml              # Config Fly.io
 ├── package.json          # Dipendenze Node.js
 ├── modules/
-│   └── serverAnalyzer.js # Modulo analisi server
+│   ├── serverAnalyzer.js # Modulo analisi server
+│   └── database.js       # Connessione MongoDB
 └── .replit_integration_files/  # File integrazione AI (non modificare)
 ```
+
+## Deploy su Fly.io
+
+1. Installa Fly CLI: `curl -L https://fly.io/install.sh | sh`
+2. Login: `fly auth login`
+3. Launch: `fly launch --name friday-discord-bot`
+4. Configura secrets:
+   - `fly secrets set DISCORD_BOT_TOKEN="..."`
+   - `fly secrets set DISCORD_CLIENT_ID="..."`
+   - `fly secrets set DISCORD_CLIENT_SECRET="..."`
+   - `fly secrets set SESSION_SECRET="..."`
+   - `fly secrets set MONGODB_URI="..."` (opzionale)
+5. Deploy: `fly deploy`
 
 ## External Dependencies
 
@@ -83,4 +105,5 @@ Preferred communication style: Simple, everyday language (Italian)
 - express-session - Gestione sessioni
 - cookie-parser - Cookie handling
 - openai - SDK OpenAI
+- mongodb - Driver MongoDB
 - p-limit, p-retry - Rate limiting e retry
