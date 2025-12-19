@@ -8,7 +8,11 @@ const PORT = 5000;
 
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const REDIRECT_URI = `https://${process.env.REPLIT_DEV_DOMAIN}/auth/discord/callback`;
+const REDIRECT_URI = process.env.DASHBOARD_URL 
+  ? `${process.env.DASHBOARD_URL}/auth/discord/callback`
+  : `https://${process.env.REPLIT_DEV_DOMAIN}/auth/discord/callback`;
+
+const ALLOWED_GUILD_ID = process.env.OASIS_GUILD_ID || null;
 
 app.use(cookieParser());
 app.use(express.json());
@@ -101,7 +105,7 @@ app.get('/', (req, res) => {
                 <div class="label">Stato Bot</div>
               </div>
               <div class="stat-box">
-                <div class="value">7</div>
+                <div class="value">9</div>
                 <div class="label">Comandi Disponibili</div>
               </div>
             </div>
@@ -112,7 +116,7 @@ app.get('/', (req, res) => {
             <div class="grid">
               <div class="stat-box">
                 <div class="value">!audit</div>
-                <div class="label">Analisi completa del server con AI</div>
+                <div class="label">Analisi completa con AI (3 fasi)</div>
               </div>
               <div class="stat-box">
                 <div class="value">!security</div>
@@ -121,6 +125,14 @@ app.get('/', (req, res) => {
               <div class="stat-box">
                 <div class="value">!age</div>
                 <div class="label">Controllo separazione fasce d'eta</div>
+              </div>
+              <div class="stat-box">
+                <div class="value">!schema</div>
+                <div class="label">Mappa struttura server</div>
+              </div>
+              <div class="stat-box">
+                <div class="value">!trend</div>
+                <div class="label">Andamento e crescita community</div>
               </div>
               <div class="stat-box">
                 <div class="value">!fix</div>
@@ -263,11 +275,41 @@ app.get('/auth/discord/callback', async (req, res) => {
     });
     const guildsData = await guildsResponse.json();
     
+    if (ALLOWED_GUILD_ID) {
+      const allowedGuild = guildsData.find(g => g.id === ALLOWED_GUILD_ID);
+      if (!allowedGuild || !allowedGuild.owner) {
+        console.log(`Accesso negato: ${userData.username} non è proprietario del server autorizzato`);
+        return res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Accesso Negato</title>
+            <style>
+              body { font-family: 'Segoe UI', Arial, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+              .box { background: #16213e; padding: 40px; border-radius: 12px; text-align: center; max-width: 400px; }
+              h1 { color: #ed4245; margin-bottom: 20px; }
+              p { color: #aaa; margin-bottom: 20px; }
+              a { color: #5865f2; }
+            </style>
+          </head>
+          <body>
+            <div class="box">
+              <h1>Accesso Negato</h1>
+              <p>Solo il proprietario del server Oasis può accedere a questa dashboard.</p>
+              <a href="/">Torna alla home</a>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+    }
+    
     req.session.user = userData;
     req.session.guilds = guildsData;
     req.session.accessToken = tokenData.access_token;
+    req.session.isOwner = true;
     
-    console.log(`Utente loggato: ${userData.username}`);
+    console.log(`Proprietario loggato: ${userData.username}`);
     
     res.redirect('/');
   } catch (error) {
@@ -289,6 +331,11 @@ app.get('/api/user', (req, res) => {
 app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/');
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('User-agent: *\nDisallow: /');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
