@@ -15,7 +15,7 @@ ignorePorts = false
 
 [agent]
 expertMode = true
-integrations = ["discord:1.0.0"]
+integrations = ["discord:1.0.0", "javascript_openai_ai_integrations:2.0.0"]
 
 [workflows]
 runButton = "Project"
