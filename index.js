@@ -373,41 +373,71 @@ client.on('messageCreate', async (message) => {
 
       if (!mee6Compat.mee6Present) {
         embed.setDescription('MEE6 non è presente in questo server.\nFriday può gestire tutte le funzionalità autonomamente.');
+        if (mee6Compat.fridayAdvantages?.length > 0) {
+          embed.addFields({
+            name: '🚀 Friday può gestire',
+            value: mee6Compat.fridayAdvantages.join('\n')
+          });
+        }
       } else {
+        const symbiosisLabels = {
+          'excellent': '✅ Eccellente',
+          'good': '🟢 Buona',
+          'basic': '🟡 Base',
+          'minimal': '🟠 Minima'
+        };
+        
         embed.addFields(
-          { name: 'Stato Simbiosi', value: `${mee6Compat.symbiosis === 'excellent' ? '✅ Eccellente' : mee6Compat.symbiosis === 'good' ? '🟡 Buona' : '⚠️ Da verificare'}`, inline: true },
+          { name: 'Simbiosi', value: symbiosisLabels[mee6Compat.symbiosis] || '❓ Sconosciuta', inline: true },
           { name: 'Punteggio', value: `${mee6Compat.score}/100`, inline: true },
-          { name: 'Ruolo MEE6', value: mee6Compat.mee6Role, inline: true }
+          { name: 'Premium', value: mee6Compat.mee6Premium ? '👑 Sì' : '📦 Base', inline: true }
         );
         
         if (mee6Compat.detectedFeatures.length > 0) {
           embed.addFields({
-            name: '🎯 Funzioni MEE6 Rilevate',
+            name: '🎯 Funzioni MEE6 Attive',
             value: mee6Compat.detectedFeatures.map(f => `• ${f}`).join('\n')
+          });
+        }
+        
+        if (mee6Compat.levelRoles?.length > 0) {
+          embed.addFields({
+            name: '🎖️ Ruoli Livello MEE6',
+            value: mee6Compat.levelRoles.slice(0, 5).map(r => `${r.name} (${r.members} utenti)`).join('\n')
           });
         }
         
         if (mee6Compat.channelsUsedByMEE6.length > 0) {
           embed.addFields({
             name: '📺 Canali MEE6',
-            value: mee6Compat.channelsUsedByMEE6.slice(0, 5).map(c => `#${c.name} (${c.feature})`).join('\n')
+            value: mee6Compat.channelsUsedByMEE6.slice(0, 5).map(c => `#${c.name} → ${c.feature}`).join('\n')
           });
         }
         
-        embed.addFields({
-          name: '📋 Raccomandazioni',
-          value: mee6Compat.recommendations.slice(0, 4).join('\n')
-        });
-        
-        if (mee6Compat.conflicts.length > 0) {
+        if (mee6Compat.recommendations?.length > 0) {
           embed.addFields({
-            name: '⚠️ Note',
-            value: mee6Compat.conflicts.map(c => `• ${c.message}`).join('\n')
+            name: '📋 Stato Integrazione',
+            value: mee6Compat.recommendations.slice(0, 6).join('\n')
+          });
+        }
+        
+        if (mee6Compat.fridayAdvantages?.length > 0) {
+          embed.addFields({
+            name: '🔷 Friday gestisce (esclusivo)',
+            value: mee6Compat.fridayAdvantages.slice(0, 5).join('\n')
+          });
+        }
+        
+        if (mee6Compat.webhooksDetected > 0) {
+          embed.addFields({
+            name: '🔗 Webhook MEE6',
+            value: `${mee6Compat.webhooksDetected} webhook rilevati`,
+            inline: true
           });
         }
       }
       
-      embed.setFooter({ text: 'Friday si integra perfettamente con MEE6 Premium!' });
+      embed.setFooter({ text: 'Friday + MEE6 = Simbiosi perfetta!' });
       
       await loadingMsg.edit({ content: '', embeds: [embed] });
     } catch (error) {
