@@ -16,10 +16,38 @@ export async function connectDB() {
     await client.connect();
     db = client.db('fridaybot');
     console.log('Connesso a MongoDB');
+    
+    await setupTTLIndexes();
+    
     return db;
   } catch (error) {
     console.error('Errore connessione MongoDB:', error.message);
     return null;
+  }
+}
+
+async function setupTTLIndexes() {
+  if (!db) return;
+  
+  try {
+    await db.collection('auditLogs').createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: 30 * 24 * 60 * 60 }
+    );
+    
+    await db.collection('dailyMetrics').createIndex(
+      { date: 1 },
+      { expireAfterSeconds: 90 * 24 * 60 * 60 }
+    );
+    
+    await db.collection('serverSnapshots').createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: 30 * 24 * 60 * 60 }
+    );
+    
+    console.log('TTL indexes configurati');
+  } catch (error) {
+    console.log('TTL indexes già esistenti o errore:', error.message);
   }
 }
 

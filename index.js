@@ -20,6 +20,12 @@ import {
   saveDailyMetrics,
   getTrends
 } from './modules/database.js';
+import {
+  getCachedAudit,
+  setCachedAudit,
+  checkRateLimit,
+  getCacheStats
+} from './modules/cache.js';
 
 const client = new Client({
   intents: [
@@ -64,12 +70,12 @@ client.on('messageCreate', async (message) => {
     const channelCount = stats.activeChannels.get(message.channel.id) || 0;
     stats.activeChannels.set(message.channel.id, channelCount + 1);
     
-    if (stats.messageCount % 50 === 0) {
-      await saveDailyMetrics(message.guild.id, {
+    if (stats.messageCount % 100 === 0) {
+      saveDailyMetrics(message.guild.id, {
         memberCount: message.guild.memberCount,
         messageCount: stats.messageCount,
         activeChannels: stats.activeChannels.size
-      });
+      }).catch(err => console.error('Metrics save error:', err.message));
     }
   }
 
@@ -92,6 +98,18 @@ client.on('messageCreate', async (message) => {
       return message.reply('❌ Serve il permesso Amministratore per usare questo comando.');
     }
 
+    const rateCheck = checkRateLimit(message.guild.id, 'audit');
+    if (!rateCheck.allowed) {
+      return message.reply(`⏳ Comando in cooldown. Riprova tra ${rateCheck.remaining} secondi.\n💡 *Usa la cache per risparmiare risorse!*`);
+    }
+
+    const cached = getCachedAudit(message.guild.id);
+    if (cached && !args.includes('--force')) {
+      const cacheAge = Math.round((Date.now() - cached.timestamp) / 60000);
+      await message.reply(`📋 **Report dalla cache** (${cacheAge} min fa)\n*Usa \`!audit --force\` per nuova analisi*\n\n${cached.report.slice(0, 1900)}`);
+      return;
+    }
+
     const loadingMsg = await message.reply('🔍 Analisi del server in corso...');
     
     try {
@@ -101,6 +119,12 @@ client.on('messageCreate', async (message) => {
       const aiRecommendations = await getAIRecommendations(report, message.guild, trends);
       
       const formattedReport = formatReport(report, aiRecommendations, mee6Compat);
+      
+      setCachedAudit(message.guild.id, { 
+        report: formattedReport, 
+        timestamp: Date.now(),
+        score: report.score
+      });
       
       if (formattedReport.length > 2000) {
         const chunks = formattedReport.match(/[\s\S]{1,1900}/g);
@@ -331,6 +355,11 @@ client.on('messageCreate', async (message) => {
   if (command === 'mee6') {
     if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
       return message.reply('❌ Serve il permesso Amministratore.');
+    }
+
+    const rateCheck = checkRateLimit(message.guild.id, 'mee6');
+    if (!rateCheck.allowed) {
+      return message.reply(`⏳ Comando in cooldown. Riprova tra ${rateCheck.remaining} secondi.`);
     }
 
     const loadingMsg = await message.reply('🔍 Analisi compatibilità MEE6...');
