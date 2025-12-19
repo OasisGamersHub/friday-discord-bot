@@ -7,7 +7,17 @@ import {
   getGuildStats,
   getAllGuildsStats,
   getActivityLog,
-  getAntiRaidStatus
+  getAntiRaidStatus,
+  logSecurityEvent,
+  getSecurityLog,
+  getSecurityAlerts,
+  recordLoginAttempt,
+  isIPBlocked,
+  registerSession,
+  updateSessionActivity,
+  getActiveSessions,
+  getSecurityStats,
+  invalidateSession
 } from './modules/sharedState.js';
 import {
   getDailyMetrics,
@@ -28,19 +38,102 @@ const REDIRECT_URI = process.env.DASHBOARD_URL
 
 const ALLOWED_GUILD_ID = process.env.OASIS_GUILD_ID || null;
 
+const apiRateLimits = new Map();
+const API_RATE_LIMIT = 60;
+const API_RATE_WINDOW = 60000;
+
 app.set('trust proxy', 1);
 app.use(cookieParser());
 app.use(express.json());
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  
+  if (isProduction) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  
+  res.setHeader('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' https://cdn.discordapp.com data:; " +
+    "connect-src 'self'"
+  );
+  
+  next();
+});
+
+app.use((req, res, next) => {
+  const clientIP = req.ip || req.connection.remoteAddress;
+  
+  if (isIPBlocked(clientIP)) {
+    logSecurityEvent({
+      type: 'blocked_request',
+      ip: clientIP,
+      path: req.path,
+      severity: 'medium',
+      message: `Richiesta bloccata da IP bannato: ${clientIP}`
+    });
+    return res.status(403).json({ error: 'IP temporaneamente bloccato' });
+  }
+  
+  next();
+});
+
+function apiRateLimit(req, res, next) {
+  const clientIP = req.ip || req.connection.remoteAddress;
+  const key = `${clientIP}:${req.path}`;
+  const now = Date.now();
+  
+  let record = apiRateLimits.get(key);
+  if (!record || now - record.windowStart > API_RATE_WINDOW) {
+    record = { count: 0, windowStart: now };
+  }
+  
+  record.count++;
+  apiRateLimits.set(key, record);
+  
+  res.setHeader('X-RateLimit-Limit', API_RATE_LIMIT);
+  res.setHeader('X-RateLimit-Remaining', Math.max(0, API_RATE_LIMIT - record.count));
+  
+  if (record.count > API_RATE_LIMIT) {
+    logSecurityEvent({
+      type: 'rate_limit_exceeded',
+      ip: clientIP,
+      path: req.path,
+      severity: 'medium',
+      message: `Rate limit superato: ${clientIP} su ${req.path}`
+    });
+    return res.status(429).json({ error: 'Troppe richieste. Riprova tra poco.' });
+  }
+  
+  next();
+}
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'discord-oauth-fallback-secret',
   resave: false,
   saveUninitialized: false,
   cookie: { 
     secure: isProduction,
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 
+    sameSite: 'strict',
+    httpOnly: true,
+    maxAge: 4 * 60 * 60 * 1000
   }
 }));
+
+app.use((req, res, next) => {
+  if (req.session?.user && req.session.id) {
+    updateSessionActivity(req.session.id);
+  }
+  next();
+});
 
 app.set('Cache-Control', 'no-cache');
 
@@ -165,6 +258,7 @@ app.get('/', (req, res) => {
           
           <div class="tabs">
             <div class="tab active" data-tab="overview">📊 Overview</div>
+            <div class="tab" data-tab="security">🛡️ Sicurezza</div>
             <div class="tab" data-tab="activity">📋 Attivita</div>
             <div class="tab" data-tab="commands">⌨️ Comandi</div>
             <div class="tab" data-tab="features">✨ Funzionalita</div>
@@ -203,6 +297,73 @@ app.get('/', (req, res) => {
             <div class="card">
               <h2>Ultimi Audit</h2>
               <div id="audit-list" class="activity-log">
+                <p style="color: #5a7a7a;">Caricamento...</p>
+              </div>
+            </div>
+          </div>
+          
+          <div id="security" class="tab-content">
+            <div class="card">
+              <h2>🛡️ Centro Sicurezza</h2>
+              <div class="grid">
+                <div class="stat-box">
+                  <div class="value" id="sec-events">-</div>
+                  <div class="label">Eventi 24h</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="sec-blocked">-</div>
+                  <div class="label">IP Bloccati</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="sec-sessions">-</div>
+                  <div class="label">Sessioni Attive</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="sec-alerts">-</div>
+                  <div class="label">Alert Critici</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>Protezioni Attive</h2>
+              <div class="features" style="margin-top: 16px;">
+                <div class="feature-card" style="border-color: #2ecc71;">
+                  <div class="icon">🔒</div>
+                  <h3>HTTPS/HSTS</h3>
+                  <p>Connessione cifrata obbligatoria</p>
+                </div>
+                <div class="feature-card" style="border-color: #2ecc71;">
+                  <div class="icon">🚫</div>
+                  <h3>Rate Limiting</h3>
+                  <p>60 richieste/min per IP</p>
+                </div>
+                <div class="feature-card" style="border-color: #2ecc71;">
+                  <div class="icon">🔐</div>
+                  <h3>Brute Force Block</h3>
+                  <p>5 tentativi = blocco 15min</p>
+                </div>
+                <div class="feature-card" style="border-color: #2ecc71;">
+                  <div class="icon">🛡️</div>
+                  <h3>CSP Headers</h3>
+                  <p>Content Security Policy attiva</p>
+                </div>
+                <div class="feature-card" style="border-color: #2ecc71;">
+                  <div class="icon">📡</div>
+                  <h3>Anti-Raid</h3>
+                  <p>Rilevamento join massivi</p>
+                </div>
+                <div class="feature-card" style="border-color: #2ecc71;">
+                  <div class="icon">🍪</div>
+                  <h3>Secure Cookies</h3>
+                  <p>HttpOnly + SameSite strict</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>Log Sicurezza</h2>
+              <div id="security-log" class="activity-log">
                 <p style="color: #5a7a7a;">Caricamento...</p>
               </div>
             </div>
@@ -408,13 +569,40 @@ app.get('/', (req, res) => {
             } catch (e) { console.log('Audits error:', e); }
           }
           
+          async function loadSecurity() {
+            try {
+              const res = await fetch('/api/security');
+              const data = await res.json();
+              
+              document.getElementById('sec-events').textContent = data.stats?.totalEvents24h || 0;
+              document.getElementById('sec-blocked').textContent = data.stats?.blockedIPsCount || 0;
+              document.getElementById('sec-sessions').textContent = data.stats?.activeSessionsCount || 0;
+              document.getElementById('sec-alerts').textContent = (data.stats?.criticalAlerts || 0) + (data.stats?.highAlerts || 0);
+              
+              const container = document.getElementById('security-log');
+              if (!data.log || data.log.length === 0) {
+                container.innerHTML = '<p style="color: #2ecc71;">Nessun evento di sicurezza - Tutto OK!</p>';
+                return;
+              }
+              
+              container.innerHTML = data.log.slice(0, 20).map(item => {
+                const date = new Date(item.timestamp);
+                const time = date.toLocaleString('it-IT');
+                const sevClass = item.severity === 'critical' || item.severity === 'high' ? 'raid' : '';
+                return '<div class="activity-item ' + sevClass + '"><div class="time">' + time + ' - ' + (item.severity || 'info').toUpperCase() + '</div><div>' + item.message + '</div></div>';
+              }).join('');
+            } catch (e) { console.log('Security error:', e); }
+          }
+          
           loadStatus();
           loadActivity();
           loadMetrics();
           loadAudits();
+          loadSecurity();
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
+          setInterval(loadSecurity, 30000);
         </script>
       </body>
       </html>
@@ -502,7 +690,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-app.get('/api/status', requireAuth, (req, res) => {
+app.get('/api/status', requireAuth, apiRateLimit, (req, res) => {
   const status = getBotStatus();
   const guildId = ALLOWED_GUILD_ID;
   const guildStats = guildId ? getGuildStats(guildId) : null;
@@ -515,13 +703,13 @@ app.get('/api/status', requireAuth, (req, res) => {
   });
 });
 
-app.get('/api/activity', requireAuth, (req, res) => {
+app.get('/api/activity', requireAuth, apiRateLimit, (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
   const activity = getActivityLog(limit);
   res.json(activity);
 });
 
-app.get('/api/metrics', requireAuth, async (req, res) => {
+app.get('/api/metrics', requireAuth, apiRateLimit, async (req, res) => {
   const guildId = ALLOWED_GUILD_ID;
   if (!guildId) {
     return res.json({ metrics: [], trends: null });
@@ -534,7 +722,7 @@ app.get('/api/metrics', requireAuth, async (req, res) => {
   res.json({ metrics, trends });
 });
 
-app.get('/api/audits', requireAuth, async (req, res) => {
+app.get('/api/audits', requireAuth, apiRateLimit, async (req, res) => {
   const guildId = ALLOWED_GUILD_ID;
   if (!guildId) {
     return res.json([]);
@@ -545,7 +733,7 @@ app.get('/api/audits', requireAuth, async (req, res) => {
   res.json(audits);
 });
 
-app.get('/api/backups', requireAuth, async (req, res) => {
+app.get('/api/backups', requireAuth, apiRateLimit, async (req, res) => {
   const guildId = ALLOWED_GUILD_ID;
   if (!guildId) {
     return res.json([]);
@@ -553,6 +741,23 @@ app.get('/api/backups', requireAuth, async (req, res) => {
   
   const backups = await getConfigBackups(guildId);
   res.json(backups);
+});
+
+app.get('/api/security', requireAuth, apiRateLimit, (req, res) => {
+  const stats = getSecurityStats();
+  const log = getSecurityLog(50);
+  const alerts = getSecurityAlerts(20);
+  const sessions = getActiveSessions();
+  
+  logSecurityEvent({
+    type: 'security_dashboard_access',
+    ip: req.ip,
+    userId: req.session.user?.id,
+    severity: 'low',
+    message: `Dashboard sicurezza accesso da ${req.session.user?.username}`
+  });
+  
+  res.json({ stats, log, alerts, sessions });
 });
 
 app.get('/auth/discord', (req, res) => {
@@ -574,6 +779,13 @@ app.get('/auth/discord/callback', async (req, res) => {
   
   if (!code || !state || state !== req.session.oauthState) {
     console.error('OAuth validation failed: invalid state or missing code');
+    logSecurityEvent({
+      type: 'oauth_validation_failed',
+      ip: req.ip,
+      severity: 'medium',
+      message: 'OAuth validation failed: stato o codice invalido'
+    });
+    recordLoginAttempt(req.ip, false);
     return res.redirect('/');
   }
   
@@ -619,6 +831,15 @@ app.get('/auth/discord/callback', async (req, res) => {
       const allowedGuild = guildsData.find(g => g.id === ALLOWED_GUILD_ID);
       if (!allowedGuild || !allowedGuild.owner) {
         console.log(`Accesso negato: ${userData.username} non è proprietario del server autorizzato`);
+        logSecurityEvent({
+          type: 'access_denied',
+          ip: req.ip,
+          userId: userData.id,
+          username: userData.username,
+          severity: 'high',
+          message: `Tentativo accesso non autorizzato da ${userData.username} (${userData.id})`
+        });
+        recordLoginAttempt(req.ip, false);
         return res.send(`
           <!DOCTYPE html>
           <html>
@@ -651,6 +872,17 @@ app.get('/auth/discord/callback', async (req, res) => {
     
     console.log(`Proprietario loggato: ${userData.username}`);
     
+    logSecurityEvent({
+      type: 'login_success',
+      ip: req.ip,
+      userId: userData.id,
+      username: userData.username,
+      severity: 'low',
+      message: `Login riuscito: ${userData.username} (Owner)`
+    });
+    recordLoginAttempt(req.ip, true);
+    registerSession(req.session.id, userData.id, req.ip);
+    
     res.redirect('/');
   } catch (error) {
     console.error('OAuth error:', error);
@@ -669,6 +901,21 @@ app.get('/api/user', (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
+  const user = req.session.user;
+  const sessionId = req.session.id;
+  
+  if (user) {
+    logSecurityEvent({
+      type: 'logout',
+      ip: req.ip,
+      userId: user.id,
+      username: user.username,
+      severity: 'low',
+      message: `Logout: ${user.username}`
+    });
+    invalidateSession(sessionId);
+  }
+  
   req.session.destroy();
   res.redirect('/');
 });

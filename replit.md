@@ -10,10 +10,18 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-19**: Sistema sicurezza all'avanguardia
+  - Headers HTTP sicuri (CSP, HSTS, X-Frame-Options, X-XSS-Protection)
+  - Rate limiting API (60 richieste/min per IP)
+  - Protezione brute-force (5 tentativi = blocco 15 min)
+  - Audit log sicurezza con tracking IP
+  - Sessioni sicure (HttpOnly, SameSite strict, timeout 4h)
+  - Tab Sicurezza nella dashboard con statistiche live
+  - Logging eventi login/logout/accessi negati
 - **2024-12-19**: Dashboard interattiva con statistiche live
-  - Interfaccia a tab (Overview, Attività, Comandi, Funzionalità)
+  - Interfaccia a tab (Overview, Sicurezza, Attività, Comandi, Funzionalità)
   - Grafici Chart.js per trend crescita 30 giorni
-  - API endpoints per dati live (/api/status, /api/activity, /api/metrics, /api/audits, /api/backups)
+  - API endpoints per dati live (/api/status, /api/activity, /api/metrics, /api/audits, /api/backups, /api/security)
   - Alert anti-raid in tempo reale sulla dashboard
   - Modulo sharedState.js per comunicazione bot-to-dashboard
 - **2024-12-19**: Sistema anti-raid e backup
