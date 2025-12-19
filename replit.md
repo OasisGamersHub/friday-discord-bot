@@ -10,6 +10,12 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-19**: Ottimizzazioni scalabilità e performance
+  - Nuovo modulo cache.js per caching risultati audit (6 ore TTL)
+  - Rate limiting su comandi costosi (audit: 10 min, mee6: 5 min)
+  - Batching ottimizzato scritture MongoDB (ogni 100 messaggi)
+  - TTL indexes automatici per auto-pulizia dati vecchi (30-90 giorni)
+  - Supporto `!audit --force` per bypassare cache
 - **2024-12-19**: Sistema compatibilità MEE6 Premium
   - Nuovo comando `!mee6` per check compatibilità con MEE6
   - Rilevamento automatico funzionalità MEE6 attive (leveling, welcome, mod-log, reaction roles)
