@@ -6,6 +6,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "server": "node server.js",
+    "dev": "node index.js & node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,6 +15,9 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "^22.13.11",
-    "discord.js": "^14.25.1"
+    "cookie-parser": "^1.4.7",
+    "discord.js": "^14.25.1",
+    "express": "^5.2.1",
+    "express-session": "^1.18.2"
   }
 }
