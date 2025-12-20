@@ -10,6 +10,15 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-20**: Professional Dashboard Redesign
+  - Sistema CSS variables con colori brand teal (#4FD1C5) e golden (#D4A373)
+  - Tipografia professionale: Space Grotesk per titoli, Inter per body text
+  - Dark theme sofisticato con gradienti radiali e effetti glass-morphism
+  - Tabs con stile pill-container e animazioni smooth
+  - Chart.js colori aggiornati per palette brand
+  - Activity items con hover effects e scrollbar custom
+  - Form controls (select, input) stilizzati coerentemente
+  - Rimossi tutti gli stili inline in favore di CSS variables
 - **2024-12-20**: Sistema Automazioni Complete
   - Scalecheck automatico ogni 6 ore con cache sharedState
   - Report giornaliero via DM all'owner alle 21:00
