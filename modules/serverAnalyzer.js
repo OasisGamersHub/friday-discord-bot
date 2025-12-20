@@ -894,13 +894,15 @@ const SCALING_THRESHOLDS = {
   channelsPerMember: { min: 0.05, max: 0.3 }
 };
 
-// Soglie dinamiche per fase di crescita
+// Soglie dinamiche 2025 per community gaming (basate su best practices Discord)
+// Fonte: Discord official guides, top gaming servers analysis (Valorant, Genshin, etc.)
 const GROWTH_PHASES = [
-  { maxMembers: 50, name: 'Avvio', channels: { min: 5, max: 20, optimal: 15 } },
-  { maxMembers: 100, name: 'Base', channels: { min: 15, max: 30, optimal: 25 } },
-  { maxMembers: 500, name: 'Crescita', channels: { min: 25, max: 60, optimal: 45 } },
-  { maxMembers: 1000, name: 'Maturità', channels: { min: 50, max: 100, optimal: 80 } },
-  { maxMembers: Infinity, name: 'Scalato', channels: { min: 80, max: 200, optimal: 120 } }
+  { maxMembers: 50, name: 'Avvio', channels: { min: 4, max: 15, optimal: 8 } },
+  { maxMembers: 100, name: 'Base', channels: { min: 8, max: 20, optimal: 12 } },
+  { maxMembers: 500, name: 'Crescita', channels: { min: 12, max: 30, optimal: 20 } },
+  { maxMembers: 1000, name: 'Maturità', channels: { min: 15, max: 40, optimal: 25 } },
+  { maxMembers: 5000, name: 'Grande', channels: { min: 20, max: 50, optimal: 35 } },
+  { maxMembers: Infinity, name: 'Mega', channels: { min: 25, max: 65, optimal: 45 } }
 ];
 
 function getGrowthPhase(memberCount) {
