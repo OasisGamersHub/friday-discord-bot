@@ -197,37 +197,38 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Deploy su Fly.io
 
-### Deploy Automatico via GitHub (METODO PRINCIPALE)
-Il deploy avviene **automaticamente** quando fai push su GitHub:
-1. Fai le modifiche su Replit
-2. Il codice viene pushato su GitHub (branch `main`)
-3. GitHub Actions esegue automaticamente il deploy su Fly.io
-4. Workflow file: `.github/workflows/fly.yml`
+### ⚡ DEPLOY RAPIDO (usa questo!)
 
-**Requisito**: Il secret `FLY_API_TOKEN` deve essere configurato su GitHub:
-- Vai su GitHub repo → Settings → Secrets and variables → Actions
-- Aggiungi `FLY_API_TOKEN` con il token da Fly.io
+**Metodo 1 - Push GitHub (automatico):**
+Il codice viene pushato automaticamente su GitHub quando fai modifiche.
+GitHub Actions fa il deploy su Fly.io automaticamente.
 
-### Configurazione Iniziale (già fatta)
+**Metodo 2 - Dalla shell Replit (se serve):**
+```bash
+git push origin main
+```
+Aspetta 1-2 minuti, il deploy parte automaticamente su GitHub Actions.
+
+---
+
+### Configurazione (già fatta)
 - App: `friday-discord-bot`
-- Organizzazione: `oasis-gamers-hub-325`
+- URL: https://friday.streambridgepro.com
 - Regione: Frankfurt (fra)
-- URL pubblico: https://friday.streambridgepro.com
-- URL Fly.io: https://friday-discord-bot.fly.dev
+- GitHub: OasisGamersHub/friday-discord-bot
 
-### Token di Autenticazione
-Il deploy richiede un **Organization Token** da Fly.io:
-1. Vai su https://fly.io (login con oasisgaminghub@proton.me)
-2. Seleziona organizzazione **"Oasis Gamers Hub"** in alto a sinistra
-3. Clicca **"Tokens"** nel menu laterale
-4. Crea un nuovo token o usa quello esistente "StreamBridge Pro"
-5. Salva il token nel secret `FLY_API_TOKEN` su Replit
+### Se il Deploy Fallisce
 
-**IMPORTANTE**: I token scadono! Se il deploy fallisce con "401 Unauthorized", rigenera il token.
+**Errore "401 Unauthorized":**
+Il token Fly.io è scaduto. Rigeneralo:
+1. Vai su https://fly.io → login con oasisgaminghub@proton.me
+2. Seleziona org "Oasis Gamers Hub" in alto
+3. Menu laterale → "Tokens" → Crea nuovo token
+4. Copia il token su GitHub: repo → Settings → Secrets → `FLY_API_TOKEN`
+5. Copia anche su Replit: Secrets → `FLY_API_TOKEN`
 
-### Sincronizzare Secrets da Replit a Fly.io
-Quando modifichi secrets su Replit (es. MONGODB_URI), devi sincronizzarli su Fly.io:
-
+**Errore "Login non funziona":**
+I secrets su Fly.io non sono aggiornati. Sincronizzali:
 ```bash
 FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly secrets set \
   DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
@@ -239,39 +240,28 @@ FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly secrets set \
   OASIS_GUILD_ID="1435348267268313090"
 ```
 
-### Comandi Deploy Utili
+**Errore "invalid state" dopo login:**
+Serve 1 sola macchina (sessioni in memoria):
 ```bash
-# Verifica stato app
+FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly scale count 1 --yes
+```
+
+### Comandi Utili
+```bash
+# Stato app
 FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly status
-
-# Lista secrets attuali
-FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly secrets list
-
-# Sincronizza tutti i secrets (comando sopra)
-
-# Riavvia le macchine senza nuovo deploy
-FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly machines restart
 
 # Logs in tempo reale
 FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly logs
+
+# Riavvia senza nuovo deploy
+FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly machines restart
 ```
 
-### Problemi Comuni
-1. **Login fallisce sulla dashboard**: Mancano secrets su Fly.io, sincronizzali
-2. **401 Unauthorized durante deploy**: Token scaduto, rigeneralo su Fly.io
-3. **MongoDB connection error**: Password con caratteri speciali? Usa URL encoding (es. `@` diventa `%40`)
-4. **Bot non risponde**: Controlla i logs con `fly logs`
-5. **Login riporta alla home (invalid state)**: Le sessioni sono in memoria, serve 1 sola macchina:
-   ```bash
-   FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly scale count 1 --yes
-   ```
-
-### Nota su MONGODB_URI
-Se la password MongoDB contiene caratteri speciali, devono essere codificati:
-- `@` → `%40`
-- `#` → `%23`
-- `!` → `%21`
-- `$` → `%24`
+### Note
+- Password MongoDB con caratteri speciali: usa URL encoding (`@` → `%40`, `#` → `%23`)
+- GitHub Actions workflow: `.github/workflows/fly.yml`
+- Bot e dashboard girano nello STESSO processo (start.js) per condividere sharedState
 
 ## External Dependencies
 
