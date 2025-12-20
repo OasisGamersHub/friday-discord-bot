@@ -10,6 +10,16 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-20**: Generazione testi AI
+  - Nuovo comando `!testi` per suggerimenti testo personalizzati
+  - Genera messaggi benvenuto, regole, descrizioni canali pronti all'uso
+  - Rileva elementi mancanti (regole, benvenuto, annunci, presentazioni, ruoli)
+  - Funzioni `generateTextSuggestions()` e `formatTextSuggestions()` in serverAnalyzer.js
+- **2024-12-20**: Sistema coda comandi dashboard-bot
+  - Comunicazione dashboard-bot via MongoDB (pendingCommands collection)
+  - Polling comandi ogni 5 secondi nel bot
+  - Dashboard può avviare audit e backup in remoto
+  - API endpoint `/api/action/:action` con coda persistente
 - **2024-12-19**: Dashboard interattiva potenziata
   - Nuovo tab "Azioni" con Quick Actions (Audit, Backup, Security Check, Refresh Stats)
   - Configurazione Anti-Raid dalla dashboard (soglia join, finestra tempo)
@@ -80,6 +90,7 @@ Preferred communication style: Simple, everyday language (Italian)
   - `!mee6` - Check compatibilità con MEE6 Premium (simbiosi, funzioni rilevate, conflitti)
   - `!fix <azione>` - Applica correzioni automatiche (riusa ruoli esistenti)
   - `!backup` - Crea backup configurazione server (ruoli, canali, permessi)
+  - `!testi` - Genera suggerimenti testo AI (benvenuto, regole, descrizioni)
   - `!help` - Lista comandi
 - Tracciamento statistiche in-memory e su MongoDB (join, messaggi, attività canali)
 - Sistema di snapshot per tracciare evoluzione struttura nel tempo
@@ -99,6 +110,13 @@ Preferred communication style: Simple, everyday language (Italian)
   - disableEveryoneInvites - Disabilita inviti per @everyone
 - `formatReport()` - Formatta report per Discord con fasi
 - `generateServerSchema()` - Genera mappa visuale struttura server
+- `generateTextSuggestions()` - Genera testi AI per canali mancanti:
+  - Messaggi di benvenuto personalizzati
+  - Regole del server numerate
+  - Descrizioni per canali (generale, gaming, off-topic)
+  - Messaggi per selezione ruoli
+  - Template per annunci
+- `formatTextSuggestions()` - Formatta suggerimenti testo per Discord
 - `checkMEE6Compatibility()` - Analizza simbiosi con MEE6 Premium:
   - Rileva presenza MEE6 nel server
   - Identifica funzionalità MEE6 attive (leveling, welcome, mod-log, reaction roles)

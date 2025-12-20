@@ -735,3 +735,153 @@ export function generateServerSchema(structure) {
   
   return schema;
 }
+
+export async function generateTextSuggestions(guild, structure) {
+  const channels = guild.channels.cache;
+  const guildName = guild.name;
+  
+  const missingElements = [];
+  const channelNames = Array.from(channels.values()).map(c => c.name.toLowerCase());
+  
+  const hasRules = channelNames.some(n => n.includes('regole') || n.includes('rules'));
+  const hasWelcome = channelNames.some(n => n.includes('benvenuto') || n.includes('welcome'));
+  const hasAnnouncements = channelNames.some(n => n.includes('annunci') || n.includes('announcements'));
+  const hasIntro = channelNames.some(n => n.includes('presentazioni') || n.includes('intro'));
+  const hasRoles = channelNames.some(n => n.includes('ruoli') || n.includes('roles'));
+  
+  if (!hasRules) missingElements.push('regole');
+  if (!hasWelcome) missingElements.push('benvenuto');
+  if (!hasAnnouncements) missingElements.push('annunci');
+  if (!hasIntro) missingElements.push('presentazioni');
+  if (!hasRoles) missingElements.push('ruoli');
+  
+  const prompt = `Sei un esperto di community Discord gaming. Il server si chiama "${guildName}" ed è una community gaming italiana.
+
+ELEMENTI MANCANTI O DA MIGLIORARE: ${missingElements.length > 0 ? missingElements.join(', ') : 'nessuno rilevato'}
+
+CANALI ESISTENTI: ${channelNames.slice(0, 20).join(', ')}
+
+NUMERO MEMBRI: ${guild.memberCount}
+
+Genera testi PRONTI ALL'USO per una community gaming italiana. Usa un tono amichevole ma professionale. Includi emoji appropriate.
+
+Rispondi in JSON con questa struttura:
+{
+  "welcomeMessage": "Messaggio di benvenuto per nuovi membri (max 300 caratteri)",
+  "rulesText": "Regole del server numerate (5-7 regole essenziali)",
+  "channelDescriptions": {
+    "generale": "Descrizione per canale chat generale",
+    "gaming": "Descrizione per canale gaming",
+    "off-topic": "Descrizione per canale off-topic"
+  },
+  "roleSelectionMessage": "Messaggio per selezione ruoli con reaction",
+  "announcementTemplate": "Template per annunci importanti",
+  "suggestions": [
+    {"type": "missing_channel", "suggestion": "Descrizione cosa manca e perché è importante"},
+    {"type": "improvement", "suggestion": "Suggerimento per migliorare qualcosa"}
+  ]
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 1500
+    });
+
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return {
+        error: true,
+        message: 'Errore nel parsing della risposta AI',
+        missingElements
+      };
+    }
+    
+    result.missingElements = missingElements;
+    result.hasRules = hasRules;
+    result.hasWelcome = hasWelcome;
+    result.hasAnnouncements = hasAnnouncements;
+    result.hasIntro = hasIntro;
+    result.hasRoles = hasRoles;
+    
+    result.welcomeMessage = result.welcomeMessage || null;
+    result.rulesText = result.rulesText || null;
+    result.roleSelectionMessage = result.roleSelectionMessage || null;
+    result.announcementTemplate = result.announcementTemplate || null;
+    result.channelDescriptions = result.channelDescriptions || {};
+    result.suggestions = Array.isArray(result.suggestions) ? result.suggestions : [];
+    
+    return result;
+  } catch (error) {
+    console.error('AI Text Generation Error:', error);
+    return {
+      error: true,
+      message: 'Errore nella generazione dei testi: ' + (error.message || 'errore sconosciuto'),
+      missingElements
+    };
+  }
+}
+
+export function formatTextSuggestions(textSuggestions) {
+  if (!textSuggestions || textSuggestions.error) {
+    return '**❌ Errore nella generazione dei suggerimenti testo**\n' + 
+           (textSuggestions?.message || 'Riprova più tardi.');
+  }
+  
+  let text = `**✍️ SUGGERIMENTI TESTO AI**\n\n`;
+  
+  if (textSuggestions.missingElements?.length > 0) {
+    text += `**⚠️ Elementi mancanti:** ${textSuggestions.missingElements.join(', ')}\n\n`;
+  } else {
+    text += `**✅ Struttura base completa!** Ecco comunque alcuni testi utili:\n\n`;
+  }
+  
+  if (textSuggestions.welcomeMessage) {
+    const label = textSuggestions.hasWelcome ? '(miglioramento)' : '(mancante)';
+    text += `**👋 Messaggio di Benvenuto ${label}:**\n`;
+    text += `\`\`\`\n${textSuggestions.welcomeMessage}\n\`\`\`\n\n`;
+  }
+  
+  if (textSuggestions.rulesText) {
+    const label = textSuggestions.hasRules ? '(miglioramento)' : '(mancante)';
+    text += `**📜 Regole ${label}:**\n`;
+    text += `\`\`\`\n${textSuggestions.rulesText}\n\`\`\`\n\n`;
+  }
+  
+  if (textSuggestions.channelDescriptions) {
+    text += `**💬 Descrizioni canali suggerite:**\n`;
+    Object.entries(textSuggestions.channelDescriptions).forEach(([channel, desc]) => {
+      if (desc) text += `• **#${channel}:** ${desc}\n`;
+    });
+    text += `\n`;
+  }
+  
+  if (textSuggestions.roleSelectionMessage) {
+    const label = textSuggestions.hasRoles ? '(miglioramento)' : '(mancante)';
+    text += `**🎭 Messaggio selezione ruoli ${label}:**\n`;
+    text += `\`\`\`\n${textSuggestions.roleSelectionMessage}\n\`\`\`\n\n`;
+  }
+  
+  if (textSuggestions.announcementTemplate) {
+    const label = textSuggestions.hasAnnouncements ? '(miglioramento)' : '(mancante)';
+    text += `**📢 Template annuncio ${label}:**\n`;
+    text += `\`\`\`\n${textSuggestions.announcementTemplate}\n\`\`\`\n\n`;
+  }
+  
+  if (textSuggestions.suggestions?.length > 0) {
+    text += `**💡 Suggerimenti aggiuntivi:**\n`;
+    textSuggestions.suggestions.forEach(s => {
+      if (s?.suggestion) {
+        const emoji = s.type === 'missing_channel' ? '📌' : '✨';
+        text += `${emoji} ${s.suggestion}\n`;
+      }
+    });
+  }
+  
+  return text;
+}

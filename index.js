@@ -8,7 +8,9 @@ import {
   formatReport,
   generateServerSchema,
   findExistingAgeRoles,
-  checkMEE6Compatibility
+  checkMEE6Compatibility,
+  generateTextSuggestions,
+  formatTextSuggestions
 } from './modules/serverAnalyzer.js';
 import { 
   connectDB, 
@@ -864,6 +866,44 @@ client.on('messageCreate', async (message) => {
     }
   }
 
+  if (command === 'testi') {
+    if (!isOwner) {
+      return message.reply('❌ Solo il proprietario del server può usare questo comando.');
+    }
+    
+    const rateCheck = checkRateLimit(message.guild.id, 'testi');
+    if (!rateCheck.allowed) {
+      return message.reply(`⏱️ Comando in cooldown. Riprova tra ${rateCheck.remaining} secondi.`);
+    }
+    
+    const loadingMsg = await message.reply('✍️ Generando suggerimenti testo AI... (15-20 secondi)');
+    
+    try {
+      const structure = await analyzeServerStructure(message.guild);
+      const textSuggestions = await generateTextSuggestions(message.guild, structure);
+      const formattedText = formatTextSuggestions(textSuggestions);
+      
+      if (formattedText.length > 2000) {
+        const parts = formattedText.match(/[\s\S]{1,1900}/g) || [formattedText];
+        await loadingMsg.edit(parts[0]);
+        for (let i = 1; i < parts.length; i++) {
+          await message.channel.send(parts[i]);
+        }
+      } else {
+        await loadingMsg.edit(formattedText);
+      }
+      
+      addActivityLog({
+        type: 'text_suggestions',
+        guildId: message.guild.id,
+        message: `Suggerimenti testo generati per ${message.guild.name}`
+      });
+    } catch (error) {
+      console.error('Text suggestions error:', error);
+      await loadingMsg.edit('❌ Errore nella generazione dei suggerimenti testo.');
+    }
+  }
+
   if (command === 'help') {
     const embed = new EmbedBuilder()
       .setTitle('📋 Comandi Disponibili')
@@ -879,6 +919,7 @@ client.on('messageCreate', async (message) => {
         { name: '!trend', value: 'Andamento e crescita', inline: true },
         { name: '!mee6', value: 'Check compatibilità MEE6', inline: true },
         { name: '!backup', value: 'Backup configurazione', inline: true },
+        { name: '!testi', value: 'Suggerimenti testo AI', inline: true },
         { name: '!fix <azione>', value: 'Applica correzioni', inline: true }
       )
       .setFooter({ text: 'Friday + MEE6 = Simbiosi perfetta!' });

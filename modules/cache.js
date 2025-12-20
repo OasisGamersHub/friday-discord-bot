@@ -4,6 +4,7 @@ const rateLimits = new Map();
 const AUDIT_CACHE_TTL = 6 * 60 * 60 * 1000;
 const RATE_LIMIT_AUDIT = 10 * 60 * 1000;
 const RATE_LIMIT_MEE6 = 5 * 60 * 1000;
+const RATE_LIMIT_TESTI = 10 * 60 * 1000;
 
 export function getCachedAudit(guildId) {
   const cached = auditCache.get(guildId);
@@ -36,7 +37,8 @@ export function checkRateLimit(guildId, command) {
     'audit': RATE_LIMIT_AUDIT,
     'mee6': RATE_LIMIT_MEE6,
     'security': RATE_LIMIT_MEE6,
-    'schema': RATE_LIMIT_MEE6
+    'schema': RATE_LIMIT_MEE6,
+    'testi': RATE_LIMIT_TESTI
   };
   
   const limit = limits[command] || 60000;
