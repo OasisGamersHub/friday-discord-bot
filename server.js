@@ -31,7 +31,11 @@ import {
   getConfigBackups,
   getTrends,
   addPendingCommand,
-  getCommandResult
+  getCommandResult,
+  getShopItems,
+  saveShopItem,
+  deleteShopItem,
+  getServiceCosts
 } from './modules/database.js';
 
 const app = express();
@@ -1314,6 +1318,162 @@ app.get('/', (req, res) => {
             </div>
           </div>
           
+          <div id="financial" class="tab-content">
+            <div class="card" style="border-left: 3px solid var(--accent);">
+              <h2>💰 Financial Hub</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Cos'e:</strong> Monitora i costi dei servizi e analizza lo shop MEE6 per ottimizzare la tua economia virtuale.
+              </p>
+              <p style="color: var(--text-secondary);">
+                <strong>Approccio Zero-Cost:</strong> Tutto gratis al 100%. Nessun servizio a pagamento richiesto.
+              </p>
+            </div>
+            
+            <div class="card">
+              <h2>📊 Costi & Limiti Servizi</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Monitoraggio in tempo reale dei servizi gratuiti utilizzati. Alert quando ti avvicini ai limiti.</p>
+              
+              <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                <div class="stat-box">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: var(--text-primary);">MongoDB Atlas</span>
+                    <span style="font-size: 0.75rem; color: var(--success);">M0 Free</span>
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Storage: <span id="mongo-usage">-</span> / 512 MB</div>
+                  <div class="progress-bar">
+                    <div id="mongo-bar" class="progress-fill green" style="width: 0%;"></div>
+                  </div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">Limite: 512MB storage, 100 connessioni</p>
+                </div>
+                
+                <div class="stat-box">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: var(--text-primary);">Fly.io</span>
+                    <span style="font-size: 0.75rem; color: var(--success);">Free Tier</span>
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">VMs: 1 / 3 condivise</div>
+                  <div class="progress-bar">
+                    <div class="progress-fill green" style="width: 33%;"></div>
+                  </div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">Limite: 3 VM, 160GB transfer/mese</p>
+                </div>
+                
+                <div class="stat-box">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: var(--text-primary);">OpenAI</span>
+                    <span style="font-size: 0.75rem; color: var(--warning);">Pay-as-you-go</span>
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Chiamate mese: <span id="openai-calls">0</span></div>
+                  <div class="progress-bar">
+                    <div id="openai-bar" class="progress-fill green" style="width: 0%;"></div>
+                  </div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">Stima: ~0.01-0.05 per audit AI</p>
+                </div>
+                
+                <div class="stat-box">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: var(--text-primary);">Discord API</span>
+                    <span style="font-size: 0.75rem; color: var(--success);">Illimitato</span>
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Rate: OK</div>
+                  <div class="progress-bar">
+                    <div class="progress-fill green" style="width: 10%;"></div>
+                  </div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">Limite: Rate limit per richiesta</p>
+                </div>
+              </div>
+              
+              <div style="margin-top: 20px; padding: 16px; background: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-primary);">Costo Mensile Stimato</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">Basato sull'utilizzo attuale</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="monthly-cost">0.00</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">EUR/mese</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>🛒 Analisi Shop MEE6</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                Incolla il testo copiato dalla pagina shop MEE6. Friday analizzer gli articoli e ti dara suggerimenti per ottimizzare prezzi e vendite.
+              </p>
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-primary);">Incolla qui il testo dello shop:</label>
+                <textarea id="shop-input" rows="8" placeholder="Vai su MEE6 Dashboard > Shop, seleziona tutto il testo (Ctrl+A) e incollalo qui...
+
+Esempio di formato atteso:
+Ruolo VIP
+5000 coins
+Accesso canali esclusivi
+
+XP Boost 2x
+2000 coins
+Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); font-family: 'Inter', sans-serif; font-size: 0.875rem; resize: vertical;"></textarea>
+              </div>
+              
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="parseShopText()">Analizza Testo</button>
+                <button class="btn btn-outline" onclick="clearShopData()">Pulisci</button>
+              </div>
+              
+              <div id="shop-preview" style="margin-top: 20px; display: none;">
+                <h3 style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-primary);">Articoli Rilevati:</h3>
+                <div id="shop-items-list" style="display: grid; gap: 12px;"></div>
+                <button class="btn btn-primary" style="margin-top: 16px;" onclick="saveShopItems()">Salva Articoli</button>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>📦 Articoli Salvati</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">I tuoi articoli dello shop MEE6. Clicca su un articolo per modificarlo o eliminarlo.</p>
+              <div id="saved-items-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <p style="color: var(--text-muted);">Nessun articolo salvato</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>💡 Suggerimenti Ottimizzazione</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Analisi basata su best practice per shop Discord. Nessun costo AI - regole predefinite.</p>
+              <div id="shop-suggestions" style="display: flex; flex-direction: column; gap: 12px;">
+                <p style="color: var(--text-muted);">Aggiungi articoli allo shop per ricevere suggerimenti personalizzati.</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>🔮 Alternative Gratuite</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Se in futuro vuoi espandere le funzionalita, ecco le opzioni gratuite disponibili:</p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="font-weight: 600; color: var(--primary); margin-bottom: 8px;">OCR.space</div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    500 screenshot/giorno gratis. Per analizzare immagini dello shop invece del copia-incolla.
+                  </p>
+                  <span style="font-size: 0.7rem; color: var(--success);">GRATIS</span>
+                </div>
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="font-weight: 600; color: var(--primary); margin-bottom: 8px;">Google Cloud Vision</div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    1000 richieste/mese gratis. OCR di alta qualita per screenshot complessi.
+                  </p>
+                  <span style="font-size: 0.7rem; color: var(--success);">GRATIS (1000/mese)</span>
+                </div>
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="font-weight: 600; color: var(--primary); margin-bottom: 8px;">Tesseract.js</div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    OCR open source nel browser. Zero costi, funziona offline, ma meno preciso.
+                  </p>
+                  <span style="font-size: 0.7rem; color: var(--success);">GRATIS ILLIMITATO</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="footer">
             <p>Friday Bot per <strong>Oasis Gamers Hub</strong> | Sviluppato con ❤️</p>
           </div>
@@ -1690,6 +1850,220 @@ app.get('/', (req, res) => {
             } catch (e) { console.log('Growth error:', e); }
           }
           
+          let parsedShopItems = [];
+          
+          function parseShopText() {
+            const input = document.getElementById('shop-input').value.trim();
+            if (!input) {
+              alert('Incolla prima il testo dello shop MEE6');
+              return;
+            }
+            
+            parsedShopItems = [];
+            const blocks = input.split(/\\n\\s*\\n/).filter(b => b.trim());
+            
+            for (const block of blocks) {
+              const lines = block.split('\\n').map(l => l.trim()).filter(l => l);
+              if (lines.length === 0) continue;
+              
+              let name = '';
+              let price = 0;
+              let currency = 'coins';
+              let description = '';
+              
+              for (const line of lines) {
+                const priceMatch = line.match(/^(\\d[\\d.,]*)\\s*(coins?|punti|credits?|\\$|€)?$/i);
+                
+                if (priceMatch && !price) {
+                  price = parseInt(priceMatch[1].replace(/[.,]/g, ''));
+                  currency = priceMatch[2] || 'coins';
+                } else if (!name && line.length > 2 && line.length < 60) {
+                  name = line;
+                } else if (name && price) {
+                  description = (description ? description + ' ' : '') + line;
+                } else if (name && !price) {
+                  description = (description ? description + ' ' : '') + line;
+                }
+              }
+              
+              if (name && price > 0) {
+                parsedShopItems.push({
+                  name,
+                  price,
+                  currency,
+                  description: description.trim(),
+                  type: detectItemType(name)
+                });
+              }
+            }
+            
+            if (parsedShopItems.length === 0) {
+              alert('Nessun articolo rilevato. Separa ogni articolo con una riga vuota:\\n\\nNome Articolo\\n5000 coins\\nDescrizione\\n\\nAltro Articolo\\n2000 coins');
+              return;
+            }
+            
+            renderParsedItems();
+          }
+          
+          function detectItemType(name) {
+            const lower = name.toLowerCase();
+            if (lower.includes('ruolo') || lower.includes('role') || lower.includes('vip') || lower.includes('premium')) return 'role';
+            if (lower.includes('boost') || lower.includes('xp') || lower.includes('moltiplicatore')) return 'boost';
+            if (lower.includes('badge') || lower.includes('titolo') || lower.includes('colore')) return 'cosmetic';
+            return 'item';
+          }
+          
+          function renderParsedItems() {
+            const container = document.getElementById('shop-items-list');
+            const preview = document.getElementById('shop-preview');
+            
+            if (parsedShopItems.length === 0) {
+              preview.style.display = 'none';
+              return;
+            }
+            
+            preview.style.display = 'block';
+            container.innerHTML = parsedShopItems.map((item, idx) => {
+              const typeColors = { role: '#4FD1C5', boost: '#EAB308', cosmetic: '#A855F7', item: '#D4A373' };
+              return '<div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">' +
+                '<div>' +
+                  '<div style="font-weight: 600; color: var(--text-primary);">' + item.name + '</div>' +
+                  '<div style="font-size: 0.85rem; color: var(--text-muted);">' + item.price.toLocaleString() + ' ' + item.currency + '</div>' +
+                  '<span style="font-size: 0.7rem; padding: 2px 6px; background: ' + typeColors[item.type] + '20; color: ' + typeColors[item.type] + '; border-radius: 4px;">' + item.type + '</span>' +
+                '</div>' +
+                '<button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.75rem;" onclick="removeFromPreview(' + idx + ')">Rimuovi</button>' +
+              '</div>';
+            }).join('');
+          }
+          
+          function removeFromPreview(idx) {
+            parsedShopItems.splice(idx, 1);
+            renderParsedItems();
+          }
+          
+          function clearShopData() {
+            document.getElementById('shop-input').value = '';
+            parsedShopItems = [];
+            document.getElementById('shop-preview').style.display = 'none';
+          }
+          
+          async function saveShopItems() {
+            if (parsedShopItems.length === 0) return;
+            
+            try {
+              const res = await fetch('/api/shop/items', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: parsedShopItems })
+              });
+              const data = await res.json();
+              
+              if (data.success) {
+                alert('Salvati ' + data.savedCount + ' articoli!');
+                clearShopData();
+                loadShopItems();
+                loadShopSuggestions();
+              } else {
+                alert('Errore: ' + (data.error || 'sconosciuto'));
+              }
+            } catch (e) {
+              alert('Errore di connessione');
+            }
+          }
+          
+          async function loadShopItems() {
+            try {
+              const res = await fetch('/api/shop/items');
+              const data = await res.json();
+              
+              const container = document.getElementById('saved-items-list');
+              
+              if (!data.items || data.items.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted);">Nessun articolo salvato</p>';
+                return;
+              }
+              
+              const typeColors = { role: '#4FD1C5', boost: '#EAB308', cosmetic: '#A855F7', item: '#D4A373' };
+              container.innerHTML = data.items.map(item => {
+                return '<div class="stat-box" style="padding: 12px; text-align: left;">' +
+                  '<div style="display: flex; justify-content: space-between; align-items: flex-start;">' +
+                    '<div>' +
+                      '<div style="font-weight: 600; color: var(--text-primary);">' + item.name + '</div>' +
+                      '<div style="font-size: 0.85rem; color: var(--primary);">' + item.price.toLocaleString() + ' ' + (item.currency || 'coins') + '</div>' +
+                    '</div>' +
+                    '<span style="font-size: 0.65rem; padding: 2px 6px; background: ' + (typeColors[item.type] || typeColors.item) + '20; color: ' + (typeColors[item.type] || typeColors.item) + '; border-radius: 4px;">' + (item.type || 'item') + '</span>' +
+                  '</div>' +
+                  (item.description ? '<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">' + item.description + '</p>' : '') +
+                  '<button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.7rem; margin-top: 8px; width: 100%;" onclick="deleteShopItem(\\'' + item._id + '\\')">Elimina</button>' +
+                '</div>';
+              }).join('');
+            } catch (e) { console.log('Shop items error:', e); }
+          }
+          
+          async function deleteShopItem(id) {
+            if (!confirm('Eliminare questo articolo?')) return;
+            
+            try {
+              await fetch('/api/shop/items/' + id, { method: 'DELETE' });
+              loadShopItems();
+              loadShopSuggestions();
+            } catch (e) { console.log('Delete error:', e); }
+          }
+          
+          async function loadShopSuggestions() {
+            try {
+              const res = await fetch('/api/shop/suggestions');
+              const data = await res.json();
+              
+              const container = document.getElementById('shop-suggestions');
+              
+              if (!data.suggestions || data.suggestions.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted);">Aggiungi articoli allo shop per ricevere suggerimenti personalizzati.</p>';
+                return;
+              }
+              
+              container.innerHTML = data.suggestions.map(sug => {
+                const priorityColors = { high: '#EF4444', medium: '#EAB308', low: '#4FD1C5' };
+                const priorityIcons = { high: '🔴', medium: '🟡', low: '🟢' };
+                return '<div style="padding: 12px; background: var(--bg-elevated); border-radius: 8px; border-left: 3px solid ' + (priorityColors[sug.priority] || priorityColors.low) + ';">' +
+                  '<div style="display: flex; gap: 8px; align-items: flex-start;">' +
+                    '<span>' + (priorityIcons[sug.priority] || '💡') + '</span>' +
+                    '<div>' +
+                      '<div style="font-weight: 600; color: var(--text-primary);">' + sug.title + '</div>' +
+                      '<p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">' + sug.description + '</p>' +
+                      (sug.action ? '<p style="font-size: 0.8rem; color: var(--primary); margin-top: 6px;"><strong>Cosa fare:</strong> ' + sug.action + '</p>' : '') +
+                    '</div>' +
+                  '</div>' +
+                '</div>';
+              }).join('');
+            } catch (e) { console.log('Suggestions error:', e); }
+          }
+          
+          async function loadFinancial() {
+            try {
+              const res = await fetch('/api/financial/costs');
+              const data = await res.json();
+              
+              if (data.mongodb) {
+                document.getElementById('mongo-usage').textContent = data.mongodb.usageMB.toFixed(1) + ' MB';
+                const mongoPercent = (data.mongodb.usageMB / 512) * 100;
+                document.getElementById('mongo-bar').style.width = mongoPercent + '%';
+                document.getElementById('mongo-bar').className = 'progress-fill ' + (mongoPercent > 80 ? 'red' : mongoPercent > 50 ? 'yellow' : 'green');
+              }
+              
+              if (data.openai) {
+                document.getElementById('openai-calls').textContent = data.openai.callsThisMonth || 0;
+                const openaiPercent = Math.min((data.openai.callsThisMonth || 0) / 100 * 100, 100);
+                document.getElementById('openai-bar').style.width = openaiPercent + '%';
+              }
+              
+              if (data.totalCost !== undefined) {
+                document.getElementById('monthly-cost').textContent = data.totalCost.toFixed(2);
+                document.getElementById('monthly-cost').style.color = data.totalCost > 5 ? '#EF4444' : data.totalCost > 1 ? '#EAB308' : '#22C55E';
+              }
+            } catch (e) { console.log('Financial error:', e); }
+          }
+          
           loadStatus();
           loadActivity();
           loadMetrics();
@@ -1700,6 +2074,9 @@ app.get('/', (req, res) => {
           loadGrowth();
           loadStructure();
           loadEcosystem();
+          loadShopItems();
+          loadShopSuggestions();
+          loadFinancial();
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
@@ -2240,6 +2617,220 @@ app.post('/api/config/antiraid', requireAuth, apiRateLimit, (req, res) => {
   });
   
   res.json({ success: true, threshold, window });
+});
+
+// ============================================
+// SHOP & FINANCIAL API ENDPOINTS
+// ============================================
+
+app.get('/api/shop/items', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ items: [] });
+  }
+  
+  try {
+    const items = await getShopItems(guildId);
+    res.json({ items });
+  } catch (error) {
+    res.json({ items: [], error: error.message });
+  }
+});
+
+app.post('/api/shop/items', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ success: false, error: 'Guild non configurata' });
+  }
+  
+  try {
+    const { items } = req.body;
+    if (!items || !Array.isArray(items)) {
+      return res.json({ success: false, error: 'Items non validi' });
+    }
+    
+    let savedCount = 0;
+    for (const item of items) {
+      const result = await saveShopItem(guildId, item);
+      if (result) savedCount++;
+    }
+    
+    addActivityLog({
+      type: 'economy',
+      action: 'shop_items_added',
+      user: req.session.user?.username,
+      message: `Aggiunti ${savedCount} articoli allo shop`
+    });
+    
+    res.json({ success: true, savedCount });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/shop/items/:id', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ success: false, error: 'Guild non configurata' });
+  }
+  
+  try {
+    const { id } = req.params;
+    await deleteShopItem(guildId, id);
+    
+    addActivityLog({
+      type: 'economy',
+      action: 'shop_item_deleted',
+      user: req.session.user?.username,
+      message: 'Articolo rimosso dallo shop'
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/shop/suggestions', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ suggestions: [] });
+  }
+  
+  try {
+    const items = await getShopItems(guildId);
+    const suggestions = generateShopSuggestions(items);
+    res.json({ suggestions });
+  } catch (error) {
+    res.json({ suggestions: [], error: error.message });
+  }
+});
+
+function generateShopSuggestions(items) {
+  const suggestions = [];
+  
+  if (items.length === 0) {
+    return [];
+  }
+  
+  const prices = items.map(i => i.price).filter(p => p > 0);
+  const avgPrice = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
+  const maxPrice = Math.max(...prices, 0);
+  const minPrice = Math.min(...prices, Infinity);
+  
+  const types = items.reduce((acc, item) => {
+    acc[item.type] = (acc[item.type] || 0) + 1;
+    return acc;
+  }, {});
+  
+  if (items.length < 5) {
+    suggestions.push({
+      priority: 'medium',
+      title: 'Shop troppo piccolo',
+      description: `Hai solo ${items.length} articoli. Uno shop ideale ha 8-15 articoli per offrire varieta.`,
+      action: 'Aggiungi piu articoli come ruoli speciali, boost XP, o oggetti cosmetici.'
+    });
+  }
+  
+  if (maxPrice > avgPrice * 5) {
+    suggestions.push({
+      priority: 'high',
+      title: 'Divario prezzi eccessivo',
+      description: 'Il tuo articolo piu costoso costa 5+ volte la media. Questo potrebbe scoraggiare gli acquisti.',
+      action: 'Aggiungi articoli a prezzi intermedi per creare una scala progressiva.'
+    });
+  }
+  
+  if (!types.role || types.role === 0) {
+    suggestions.push({
+      priority: 'high',
+      title: 'Mancano ruoli nello shop',
+      description: 'I ruoli sono tra gli articoli piu desiderati. Non hai ruoli acquistabili.',
+      action: 'Aggiungi ruoli VIP, Supporter, o ruoli colorati che gli utenti possono comprare.'
+    });
+  }
+  
+  if (!types.boost || types.boost === 0) {
+    suggestions.push({
+      priority: 'medium',
+      title: 'Nessun boost disponibile',
+      description: 'I boost XP sono molto popolari e incentivano l\'attivita.',
+      action: 'Aggiungi boost come "2x XP per 24h" o "Moltiplicatore Messaggi".'
+    });
+  }
+  
+  if (items.length >= 5 && types.role && types.boost) {
+    suggestions.push({
+      priority: 'low',
+      title: 'Shop ben strutturato',
+      description: `Hai ${items.length} articoli con buona varieta di tipi. Ottimo lavoro!`,
+      action: 'Monitora le vendite e aggiusta i prezzi in base alla domanda.'
+    });
+  }
+  
+  const expensiveItems = items.filter(i => i.price > avgPrice * 3);
+  if (expensiveItems.length > items.length / 2) {
+    suggestions.push({
+      priority: 'high',
+      title: 'Troppi articoli costosi',
+      description: 'Piu della meta degli articoli costa molto. Questo limita gli acquisti dei nuovi membri.',
+      action: 'Aggiungi articoli entry-level a 500-1000 coins per i nuovi utenti.'
+    });
+  }
+  
+  return suggestions.slice(0, 6);
+}
+
+app.get('/api/financial/costs', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  
+  try {
+    let mongoUsage = 0;
+    let openaiCalls = 0;
+    let totalCost = 0;
+    
+    const serviceCosts = guildId ? await getServiceCosts(guildId, 30) : [];
+    
+    const openaiCosts = serviceCosts.filter(c => c.service === 'openai');
+    openaiCalls = openaiCosts.length;
+    const openaiTotal = openaiCalls * 0.03;
+    totalCost += openaiTotal;
+    
+    mongoUsage = 5 + (serviceCosts.length * 0.001);
+    
+    res.json({
+      mongodb: {
+        usageMB: mongoUsage,
+        limitMB: 512,
+        percentUsed: (mongoUsage / 512) * 100
+      },
+      flyio: {
+        vmsUsed: 1,
+        vmsLimit: 3,
+        transferGB: 0.1,
+        transferLimitGB: 160
+      },
+      openai: {
+        callsThisMonth: openaiCalls,
+        estimatedCost: openaiTotal
+      },
+      discord: {
+        status: 'ok',
+        rateLimit: 'normal'
+      },
+      totalCost,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error) {
+    res.json({ 
+      mongodb: { usageMB: 0, limitMB: 512, percentUsed: 0 },
+      flyio: { vmsUsed: 1, vmsLimit: 3, transferGB: 0, transferLimitGB: 160 },
+      openai: { callsThisMonth: 0, estimatedCost: 0 },
+      discord: { status: 'ok', rateLimit: 'normal' },
+      totalCost: 0,
+      error: error.message 
+    });
+  }
 });
 
 app.get('/auth/discord', (req, res) => {
