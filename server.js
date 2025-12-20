@@ -2,6 +2,8 @@ import express from 'express';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import {
   getBotStatus,
   getGuildStats,
@@ -142,49 +144,48 @@ app.use((req, res, next) => {
 
 app.set('Cache-Control', 'no-cache');
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+app.get('/friday-logo.png', (req, res) => {
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(join(__dirname, 'attached_assets', 'friday-bot-logo.png'));
+});
+
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
   
   :root {
     --primary: #4FD1C5;
-    --primary-dark: #38B2AC;
     --accent: #D4A373;
-    --accent-light: #E8C4A0;
-    --bg-dark: #0F1419;
-    --bg-card: #1A2332;
-    --bg-card-hover: #212D40;
-    --bg-elevated: #243447;
-    --text-primary: #F7FAFC;
-    --text-secondary: #A0AEC0;
-    --text-muted: #718096;
-    --border: rgba(79, 209, 197, 0.15);
-    --border-hover: rgba(212, 163, 115, 0.4);
-    --glow-primary: rgba(79, 209, 197, 0.25);
-    --glow-accent: rgba(212, 163, 115, 0.25);
-    --danger: #FC8181;
-    --success: #68D391;
-    --warning: #F6E05E;
+    --bg-dark: #000000;
+    --bg-card: #0A0A0A;
+    --bg-elevated: #111111;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0A0;
+    --text-muted: #666666;
+    --border: #1A1A1A;
+    --border-hover: #2A2A2A;
+    --danger: #EF4444;
+    --success: #22C55E;
+    --warning: #EAB308;
   }
   
   * { margin: 0; padding: 0; box-sizing: border-box; }
   
   body { 
-    font-family: 'Inter', system-ui, sans-serif; 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif; 
     background: var(--bg-dark);
-    background-image: 
-      radial-gradient(ellipse at 20% 0%, rgba(79, 209, 197, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 100%, rgba(212, 163, 115, 0.06) 0%, transparent 50%);
     color: var(--text-primary); 
     min-height: 100vh;
-    line-height: 1.6;
+    line-height: 1.5;
   }
   
-  h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
+  h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
   
   .navbar { 
-    background: rgba(15, 20, 25, 0.85); 
-    backdrop-filter: blur(20px); 
-    -webkit-backdrop-filter: blur(20px);
+    background: var(--bg-dark);
     padding: 16px 32px; 
     display: flex; 
     justify-content: space-between; 
@@ -194,119 +195,61 @@ const styles = `
     top: 0; 
     z-index: 100; 
   }
-  .navbar .brand { display: flex; align-items: center; gap: 14px; }
+  .navbar .brand { display: flex; align-items: center; gap: 12px; }
   .navbar .brand img { 
-    width: 48px; 
-    height: 48px; 
-    border-radius: 14px; 
-    border: 2px solid var(--primary);
-    box-shadow: 0 0 20px var(--glow-primary);
+    width: 40px; 
+    height: 40px; 
+    border-radius: 8px;
   }
   .navbar h1 { 
-    font-size: 1.5rem; 
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-    -webkit-background-clip: text; 
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 1.25rem; 
+    font-weight: 600;
+    color: var(--text-primary);
   }
-  .navbar a { color: var(--text-primary); text-decoration: none; margin-left: 20px; transition: all 0.2s; }
-  .navbar a:hover { color: var(--primary); }
+  .navbar a { color: var(--text-secondary); text-decoration: none; margin-left: 24px; font-size: 0.875rem; }
+  .navbar a:hover { color: var(--text-primary); }
   
-  .container { max-width: 1280px; margin: 0 auto; padding: 32px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
   
   .card { 
-    background: linear-gradient(145deg, var(--bg-card) 0%, rgba(26, 35, 50, 0.8) 100%);
+    background: var(--bg-card);
     border: 1px solid var(--border); 
-    border-radius: 20px; 
-    padding: 28px; 
-    margin-bottom: 24px; 
-    backdrop-filter: blur(10px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-    position: relative;
-    overflow: hidden;
+    border-radius: 8px; 
+    padding: 24px; 
+    margin-bottom: 16px;
   }
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--primary), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .card:hover { 
-    transform: translateY(-4px); 
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 40px var(--glow-primary);
-    border-color: var(--border-hover);
-  }
-  .card:hover::before { opacity: 1; }
+  .card:hover { border-color: var(--border-hover); }
   
   .card h2 { 
     color: var(--text-primary); 
-    margin-bottom: 20px; 
-    font-size: 1.25rem; 
-    font-weight: 600; 
-    display: flex; 
-    align-items: center; 
-    gap: 12px; 
-  }
-  .card h2::before { 
-    content: ''; 
-    width: 4px; 
-    height: 24px; 
-    background: linear-gradient(180deg, var(--primary), var(--accent)); 
-    border-radius: 4px; 
+    margin-bottom: 16px; 
+    font-size: 1rem; 
+    font-weight: 600;
   }
   
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
   
   .stat-box { 
-    background: linear-gradient(145deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+    background: var(--bg-elevated);
     border: 1px solid var(--border); 
-    border-radius: 16px; 
-    padding: 24px; 
-    text-align: center; 
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
+    border-radius: 8px; 
+    padding: 20px; 
+    text-align: center;
   }
-  .stat-box::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, var(--glow-primary) 0%, transparent 50%);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .stat-box:hover { 
-    border-color: var(--accent); 
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
-  }
-  .stat-box:hover::after { opacity: 1; }
+  .stat-box:hover { border-color: var(--border-hover); }
   .stat-box .value { 
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 2.5rem; 
+    font-size: 2rem; 
     font-weight: 700; 
-    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-    -webkit-background-clip: text; 
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    position: relative;
-    z-index: 1;
+    color: var(--primary);
   }
   .stat-box .label { 
-    color: var(--text-secondary); 
-    margin-top: 8px; 
-    font-size: 0.875rem; 
+    color: var(--text-muted); 
+    margin-top: 4px; 
+    font-size: 0.75rem; 
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    position: relative;
-    z-index: 1;
   }
   
   .btn { 
@@ -314,247 +257,160 @@ const styles = `
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px 24px; 
-    border-radius: 12px; 
+    padding: 10px 20px; 
+    border-radius: 6px; 
     text-decoration: none; 
-    font-weight: 600; 
+    font-weight: 500; 
     cursor: pointer; 
-    border: none; 
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-    font-size: 0.9rem;
+    border: none;
+    font-size: 0.875rem;
     font-family: 'Inter', sans-serif;
   }
   .btn-primary { 
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    color: var(--bg-dark); 
-    box-shadow: 0 4px 16px var(--glow-primary);
+    background: var(--primary);
+    color: #000000;
   }
-  .btn-primary:hover { 
-    transform: translateY(-2px); 
-    box-shadow: 0 8px 24px var(--glow-primary);
-    filter: brightness(1.1);
-  }
+  .btn-primary:hover { opacity: 0.9; }
   .btn-discord { 
-    background: linear-gradient(135deg, #5865F2 0%, #4752C4 100%);
-    color: white; 
-    box-shadow: 0 4px 16px rgba(88, 101, 242, 0.3);
-  }
-  .btn-discord:hover { 
-    transform: translateY(-2px); 
-    box-shadow: 0 8px 24px rgba(88, 101, 242, 0.4);
-  }
-  .btn-danger { 
-    background: linear-gradient(135deg, #E53E3E 0%, #C53030 100%);
+    background: #5865F2;
     color: white;
   }
-  .btn-danger:hover { transform: translateY(-2px); filter: brightness(1.1); }
+  .btn-discord:hover { opacity: 0.9; }
+  .btn-danger { 
+    background: var(--danger);
+    color: white;
+  }
+  .btn-danger:hover { opacity: 0.9; }
   .btn-outline { 
     background: transparent; 
-    border: 2px solid var(--primary); 
-    color: var(--primary);
+    border: 1px solid var(--border); 
+    color: var(--text-secondary);
   }
   .btn-outline:hover { 
-    background: var(--primary); 
-    color: var(--bg-dark);
-    box-shadow: 0 4px 16px var(--glow-primary);
+    border-color: var(--primary); 
+    color: var(--primary);
   }
   
-  .user-info { display: flex; align-items: center; gap: 16px; }
+  .user-info { display: flex; align-items: center; gap: 12px; }
   .user-info img { 
-    width: 44px; 
-    height: 44px; 
-    border-radius: 12px; 
-    border: 2px solid var(--primary);
-    box-shadow: 0 0 12px var(--glow-primary);
+    width: 36px; 
+    height: 36px; 
+    border-radius: 6px;
   }
-  .user-info span { font-weight: 600; color: var(--text-primary); }
+  .user-info span { font-weight: 500; color: var(--text-primary); font-size: 0.875rem; }
   
   .progress-bar { 
     background: var(--bg-elevated); 
-    border-radius: 12px; 
-    height: 12px; 
+    border-radius: 4px; 
+    height: 8px; 
     overflow: hidden; 
-    margin-top: 12px;
+    margin-top: 8px;
   }
-  .progress-fill { 
-    height: 100%; 
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
-    border-radius: 12px;
-    position: relative;
-  }
-  .progress-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
-    animation: shimmer 2s infinite;
-  }
-  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-  .progress-fill.green { background: linear-gradient(90deg, var(--primary), var(--success)); }
-  .progress-fill.yellow { background: linear-gradient(90deg, var(--accent), var(--warning)); }
-  .progress-fill.red { background: linear-gradient(90deg, #E53E3E, var(--danger)); }
+  .progress-fill { height: 100%; border-radius: 4px; }
+  .progress-fill.green { background: var(--success); }
+  .progress-fill.yellow { background: var(--warning); }
+  .progress-fill.red { background: var(--danger); }
   
   .issue-list { list-style: none; }
-  .issue-list li { padding: 14px 18px; margin: 8px 0; border-radius: 12px; font-size: 0.95rem; }
-  .issue-list li.critical { background: rgba(229, 62, 62, 0.1); border-left: 4px solid #E53E3E; }
-  .issue-list li.high { background: rgba(246, 224, 94, 0.1); border-left: 4px solid var(--warning); }
-  .issue-list li.medium { background: rgba(79, 209, 197, 0.1); border-left: 4px solid var(--primary); }
+  .issue-list li { padding: 12px 16px; margin: 6px 0; border-radius: 6px; font-size: 0.875rem; }
+  .issue-list li.critical { background: rgba(239, 68, 68, 0.1); border-left: 3px solid var(--danger); }
+  .issue-list li.high { background: rgba(234, 179, 8, 0.1); border-left: 3px solid var(--warning); }
+  .issue-list li.medium { background: rgba(79, 209, 197, 0.1); border-left: 3px solid var(--primary); }
   
-  .guilds-list { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; }
+  .guilds-list { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
   .guild-card { 
     background: var(--bg-elevated); 
     border: 1px solid var(--border); 
-    padding: 16px 20px; 
-    border-radius: 14px; 
+    padding: 12px 16px; 
+    border-radius: 6px; 
     display: flex; 
     align-items: center; 
-    gap: 14px; 
-    transition: all 0.3s;
+    gap: 12px;
   }
-  .guild-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-  .guild-card img { width: 42px; height: 42px; border-radius: 10px; }
+  .guild-card:hover { border-color: var(--border-hover); }
+  .guild-card img { width: 32px; height: 32px; border-radius: 6px; }
   
-  .hero { text-align: center; padding: 100px 24px; position: relative; }
-  .hero::before { 
-    content: ''; 
-    position: absolute; 
-    top: 50%; 
-    left: 50%; 
-    transform: translate(-50%, -50%); 
-    width: 600px; 
-    height: 600px; 
-    background: radial-gradient(circle, var(--glow-primary) 0%, transparent 60%);
-    pointer-events: none;
-    filter: blur(60px);
-  }
+  .hero { text-align: center; padding: 80px 24px; }
   .hero .logo { 
-    width: 140px; 
-    height: 140px; 
-    border-radius: 32px; 
-    margin-bottom: 32px; 
-    border: 3px solid var(--primary);
-    box-shadow: 0 0 60px var(--glow-primary), 0 20px 40px rgba(0,0,0,0.4);
+    width: 120px; 
+    height: 120px; 
+    border-radius: 16px; 
+    margin-bottom: 24px;
     position: relative;
     z-index: 1;
   }
   .hero h1 { 
-    font-size: 3.5rem; 
-    margin-bottom: 20px;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 50%, var(--primary) 100%);
-    background-size: 200% auto;
-    -webkit-background-clip: text; 
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: gradient-shift 3s ease infinite;
-    position: relative;
-    z-index: 1;
+    font-size: 2.5rem; 
+    margin-bottom: 16px;
+    color: var(--text-primary);
   }
-  @keyframes gradient-shift { 0%, 100% { background-position: 0% center; } 50% { background-position: 100% center; } }
   .hero p { 
     color: var(--text-secondary); 
-    margin-bottom: 40px; 
-    font-size: 1.2rem; 
-    max-width: 520px; 
+    margin-bottom: 32px; 
+    font-size: 1rem; 
+    max-width: 480px; 
     margin-left: auto; 
-    margin-right: auto; 
-    line-height: 1.7;
-    position: relative;
-    z-index: 1;
+    margin-right: auto;
   }
   
-  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 48px; }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 48px; }
   .feature-card { 
-    background: linear-gradient(145deg, var(--bg-card) 0%, var(--bg-elevated) 100%);
+    background: var(--bg-card);
     border: 1px solid var(--border); 
-    border-radius: 18px; 
-    padding: 28px; 
-    text-align: center; 
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
+    border-radius: 8px; 
+    padding: 24px; 
+    text-align: center;
   }
-  .feature-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(from 0deg, transparent, var(--glow-primary), transparent 30%);
-    opacity: 0;
-    transition: opacity 0.5s;
-    animation: rotate-glow 4s linear infinite paused;
-  }
-  .feature-card:hover::before { opacity: 1; animation-play-state: running; }
-  @keyframes rotate-glow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .feature-card:hover { 
-    border-color: var(--accent); 
-    transform: translateY(-6px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-  }
+  .feature-card:hover { border-color: var(--border-hover); }
   .feature-card .icon { 
-    font-size: 2.8rem; 
-    margin-bottom: 18px;
+    font-size: 2rem; 
+    margin-bottom: 12px;
     display: block;
-    filter: drop-shadow(0 4px 8px var(--glow-primary));
   }
   .feature-card h3 { 
-    color: var(--primary); 
-    font-size: 1.1rem; 
-    margin-bottom: 12px; 
+    color: var(--text-primary); 
+    font-size: 1rem; 
+    margin-bottom: 8px; 
     font-weight: 600;
-    position: relative;
-    z-index: 1;
   }
   .feature-card p { 
     color: var(--text-muted); 
-    font-size: 0.9rem; 
-    line-height: 1.6;
-    position: relative;
-    z-index: 1;
+    font-size: 0.875rem; 
+    line-height: 1.5;
   }
   
-  .command-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-top: 20px; }
+  .command-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 16px; }
   .command-item { 
     background: var(--bg-elevated); 
     border: 1px solid var(--border); 
-    border-radius: 12px; 
-    padding: 16px 20px; 
-    transition: all 0.3s;
+    border-radius: 6px; 
+    padding: 12px 16px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
   }
-  .command-item:hover { 
-    border-color: var(--primary); 
-    background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(79, 209, 197, 0.05) 100%);
-  }
+  .command-item:hover { border-color: var(--border-hover); }
   .command-item code { 
-    background: linear-gradient(135deg, rgba(79, 209, 197, 0.2), rgba(79, 209, 197, 0.1));
+    background: var(--bg-card);
     color: var(--primary); 
-    padding: 6px 14px; 
-    border-radius: 8px; 
-    font-family: 'JetBrains Mono', 'Consolas', monospace; 
-    font-size: 0.9rem;
+    padding: 4px 10px; 
+    border-radius: 4px; 
+    font-family: 'SF Mono', 'Consolas', monospace; 
+    font-size: 0.8rem;
     font-weight: 500;
-    border: 1px solid rgba(79, 209, 197, 0.3);
     white-space: nowrap;
   }
-  .command-item span { color: var(--text-secondary); font-size: 0.9rem; }
+  .command-item span { color: var(--text-secondary); font-size: 0.875rem; }
   
   .accent { color: var(--accent); }
   
   .footer { 
     text-align: center; 
-    padding: 32px; 
+    padding: 24px; 
     color: var(--text-muted); 
-    font-size: 0.875rem; 
+    font-size: 0.75rem; 
     border-top: 1px solid var(--border); 
     margin-top: 48px;
-    background: linear-gradient(180deg, transparent 0%, rgba(79, 209, 197, 0.02) 100%);
   }
   .footer strong { color: var(--primary); }
 `;
@@ -573,120 +429,94 @@ app.get('/', (req, res) => {
       <head>
         <title>Friday Bot - Dashboard | Oasis Gamers Hub</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="icon" href="https://cdn.discordapp.com/icons/1435348267268313090/a_icon.png" type="image/png">
+        <link rel="icon" href="/friday-logo.png" type="image/png">
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>${styles}
           .tabs { 
             display: flex; 
-            gap: 8px; 
-            margin-bottom: 28px; 
+            gap: 4px; 
+            margin-bottom: 24px; 
             flex-wrap: wrap;
-            padding: 6px;
-            background: var(--bg-card);
-            border-radius: 16px;
-            border: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
           }
           .tab { 
-            padding: 12px 24px; 
+            padding: 8px 16px; 
             background: transparent;
             border: none;
-            border-radius: 12px; 
+            border-radius: 4px; 
             cursor: pointer; 
             color: var(--text-muted); 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             font-weight: 500;
-            font-size: 0.9rem;
-            position: relative;
+            font-size: 0.875rem;
           }
-          .tab:hover { 
-            color: var(--text-primary);
-            background: rgba(79, 209, 197, 0.1);
-          }
+          .tab:hover { color: var(--text-primary); }
           .tab.active { 
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: var(--bg-dark);
-            box-shadow: 0 4px 12px var(--glow-primary);
+            background: var(--bg-elevated);
+            color: var(--primary);
           }
-          .tab-content { display: none; animation: fadeIn 0.3s ease; }
+          .tab-content { display: none; }
           .tab-content.active { display: block; }
-          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
           
           .chart-container { 
-            background: linear-gradient(145deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+            background: var(--bg-elevated);
             border: 1px solid var(--border);
-            border-radius: 16px; 
-            padding: 24px; 
-            margin-top: 20px;
+            border-radius: 6px; 
+            padding: 16px; 
+            margin-top: 16px;
           }
           
           .activity-log { 
-            max-height: 420px; 
+            max-height: 400px; 
             overflow-y: auto;
-            padding-right: 8px;
           }
-          .activity-log::-webkit-scrollbar { width: 6px; }
-          .activity-log::-webkit-scrollbar-track { background: var(--bg-elevated); border-radius: 3px; }
-          .activity-log::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+          .activity-log::-webkit-scrollbar { width: 4px; }
+          .activity-log::-webkit-scrollbar-track { background: var(--bg-dark); }
+          .activity-log::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 2px; }
           
           .activity-item { 
-            padding: 16px 18px; 
-            margin: 10px 0; 
-            background: linear-gradient(145deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+            padding: 12px 16px; 
+            margin: 8px 0; 
+            background: var(--bg-elevated);
             border: 1px solid var(--border);
-            border-radius: 12px; 
-            border-left: 4px solid var(--primary);
-            transition: all 0.2s;
+            border-radius: 6px; 
+            border-left: 3px solid var(--primary);
           }
-          .activity-item:hover {
-            border-color: var(--border-hover);
-            transform: translateX(4px);
-          }
+          .activity-item:hover { border-color: var(--border-hover); }
           .activity-item.raid { 
-            border-left-color: #E53E3E; 
-            background: linear-gradient(145deg, rgba(229, 62, 62, 0.1), var(--bg-card));
+            border-left-color: var(--danger); 
+            background: rgba(239, 68, 68, 0.05);
           }
-          .activity-item.audit { border-left-color: #4299E1; }
+          .activity-item.audit { border-left-color: #3B82F6; }
           .activity-item .time { 
             color: var(--text-muted); 
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 500;
           }
           
           .live-dot { 
             display: inline-block; 
-            width: 10px; 
-            height: 10px; 
+            width: 8px; 
+            height: 8px; 
             background: var(--success); 
             border-radius: 50%; 
-            margin-right: 10px; 
-            animation: pulse 2s infinite;
-            box-shadow: 0 0 8px var(--success);
-          }
-          @keyframes pulse { 
-            0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--success); } 
-            50% { opacity: 0.6; box-shadow: 0 0 16px var(--success); } 
+            margin-right: 8px;
           }
           
           .raid-alert { 
-            background: linear-gradient(145deg, rgba(229, 62, 62, 0.15), rgba(229, 62, 62, 0.05));
-            border: 1px solid #E53E3E; 
-            border-radius: 16px; 
-            padding: 20px; 
-            margin-bottom: 24px; 
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger); 
+            border-radius: 6px; 
+            padding: 16px; 
+            margin-bottom: 16px; 
             display: none;
-            animation: shake 0.5s ease;
           }
           .raid-alert.active { display: block; }
-          @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-          }
           
           select {
             width: 100%;
-            padding: 12px 16px;
-            border-radius: 10px;
+            padding: 10px 12px;
+            border-radius: 6px;
             background: var(--bg-elevated);
             color: var(--text-primary);
             border: 1px solid var(--border);
@@ -705,7 +535,7 @@ app.get('/', (req, res) => {
       <body>
         <nav class="navbar">
           <div class="brand">
-            <img src="https://cdn.discordapp.com/icons/1435348267268313090/a_icon.png" alt="Oasis" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+            <img src="/friday-logo.png" alt="Oasis" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
             <h1>Friday <span class="accent">Dashboard</span></h1>
           </div>
           <div class="user-info">
@@ -1480,19 +1310,19 @@ app.get('/', (req, res) => {
       <head>
         <title>Friday Bot | Oasis Gamers Hub</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="icon" href="https://cdn.discordapp.com/icons/1435348267268313090/a_icon.png" type="image/png">
+        <link rel="icon" href="/friday-logo.png" type="image/png">
         <style>${styles}</style>
       </head>
       <body>
         <nav class="navbar">
           <div class="brand">
-            <img src="https://cdn.discordapp.com/icons/1435348267268313090/a_icon.png" alt="Oasis" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+            <img src="/friday-logo.png" alt="Oasis" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
             <h1>Friday <span class="accent">Bot</span></h1>
           </div>
         </nav>
         
         <div class="hero">
-          <img src="https://cdn.discordapp.com/icons/1435348267268313090/a_icon.png" alt="Oasis Gamers Hub" class="logo" onerror="this.style.display='none'">
+          <img src="/friday-logo.png" alt="Oasis Gamers Hub" class="logo" onerror="this.style.display='none'">
           <h1>Friday Bot</h1>
           <p>Il tuo assistente AI per gestire, proteggere e far crescere <strong>Oasis Gamers Hub</strong></p>
           <a href="/auth/discord" class="btn btn-discord" style="font-size: 1.1rem; padding: 16px 36px;">
