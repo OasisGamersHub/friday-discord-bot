@@ -10,7 +10,7 @@ channel = "stable-24_11"
 packages = ["flyctl"]
 
 [deployment]
-run = ["bash", "-c", "node index.js & node server.js"]
+run = ["npm", "run", "server"]
 deploymentTarget = "vm"
 ignorePorts = false
 
