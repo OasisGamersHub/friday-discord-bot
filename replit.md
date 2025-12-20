@@ -33,6 +33,13 @@ The system consists of a Discord bot built with `discord.js v14` and a web dashb
 -   **MEE6 Compatibility:** Command `!mee6` checks for active MEE6 features to ensure harmonious operation and avoid conflicts, with a symbiosis score.
 -   **Advanced Analytics:** Tracks daily metrics (message count, join count, leave count) persisted to MongoDB and visualizes trends through Chart.js graphs on the dashboard.
 -   **Command Queue:** Dashboard-bot communication is managed via a MongoDB pendingCommands collection, allowing the dashboard to initiate remote actions.
+-   **Invite Tracking System:** Complete invite tracking with:
+    -   Automatic detection of which invite was used when members join (cache comparison)
+    -   MongoDB persistence of all invites (inviter, invited, code, valid flag, timestamp)
+    -   Milestone rewards at thresholds: 5, 10, 25, 50, 100 invites
+    -   Automatic role creation and assignment for milestones (with unique colors)
+    -   DM notifications with MEE6 coins suggestion for manual payout
+    -   Dashboard tab "Inviti" with leaderboard (top 10), milestone display, recent invites feed
 -   **Financial Hub:** Tab dedicated to cost monitoring and MEE6 shop analysis. Features include:
     -   **Costi & Limiti Panel:** Visual progress bars tracking free-tier service usage (MongoDB Atlas M0 512MB, Fly.io 3 VMs + 160GB, OpenAI calls/month, Discord API).
     -   **MEE6 Shop Analyzer:** Copy-paste parser (block-based, blank-line delimited) to import shop items from MEE6 dashboard exports. Zero API cost approach.
