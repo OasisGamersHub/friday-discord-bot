@@ -521,14 +521,12 @@ app.get('/', (req, res) => {
             color: var(--text-primary);
             border: 1px solid var(--border);
             font-family: 'Inter', sans-serif;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             cursor: pointer;
-            transition: all 0.2s;
           }
           select:hover, select:focus {
             border-color: var(--primary);
             outline: none;
-            box-shadow: 0 0 0 3px var(--glow-primary);
           }
         </style>
       </head>
@@ -622,10 +620,10 @@ app.get('/', (req, res) => {
                   <span id="growth-current">0</span>
                   <span>1000</span>
                 </div>
-                <div style="background: #1a2e2e; border-radius: 10px; height: 24px; overflow: hidden;">
-                  <div id="growth-bar" style="background: linear-gradient(90deg, #2ecc71, #27ae60); height: 100%; transition: width 0.5s; width: 0%;"></div>
+                <div style="background: var(--bg-elevated); border-radius: 4px; height: 16px; overflow: hidden;">
+                  <div id="growth-bar" style="background: var(--primary); height: 100%; width: 0%;"></div>
                 </div>
-                <p style="text-align: center; margin-top: 8px; color: #8fa8a8;" id="growth-progress">0% completato</p>
+                <p style="text-align: center; margin-top: 8px; color: var(--text-muted);" id="growth-progress">0% completato</p>
               </div>
             </div>
             
