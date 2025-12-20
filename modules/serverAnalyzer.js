@@ -886,6 +886,109 @@ export function formatTextSuggestions(textSuggestions) {
   return text;
 }
 
+// ============================================
+// STRATEGY AI REPORT GENERATION
+// ============================================
+
+export async function generateStrategyReport(snapshot, serverInfo) {
+  const { guildName, memberCount, channelCount, inviteLink } = serverInfo;
+  
+  const prompt = `Sei un consulente esperto di community Discord gaming. Analizza i dati del server "${guildName}" e genera un report strategico mensile dettagliato.
+
+DATI SERVER:
+- Nome: ${guildName}
+- Membri attuali: ${memberCount}
+- Canali: ${channelCount}
+- Link invito: ${inviteLink || 'non specificato'}
+
+METRICHE ULTIMO MESE:
+- Messaggi totali: ${snapshot?.currentMonth?.totalMessages || 0}
+- Media messaggi/giorno: ${snapshot?.currentMonth?.avgDailyMessages || 0}
+- Nuovi membri: ${snapshot?.currentMonth?.totalJoins || 0}
+- Membri usciti: ${snapshot?.currentMonth?.totalLeaves || 0}
+- Crescita netta: ${snapshot?.currentMonth?.netGrowth || 0}
+- Giorni tracciati: ${snapshot?.currentMonth?.daysTracked || 0}
+
+CONFRONTO MESE PRECEDENTE:
+- Messaggi totali precedente: ${snapshot?.previousMonth?.totalMessages || 0}
+- Nuovi membri precedente: ${snapshot?.previousMonth?.totalJoins || 0}
+- Crescita netta precedente: ${snapshot?.previousMonth?.netGrowth || 0}
+
+INVITI:
+- Inviti questo mese: ${snapshot?.invites?.thisMonth || 0}
+- Inviti validi: ${snapshot?.invites?.validThisMonth || 0}
+- Top inviters: ${snapshot?.invites?.topInviters?.map(t => t.username + ' (' + t.count + ')').join(', ') || 'nessuno'}
+
+Genera un report strategico completo in JSON con questa struttura:
+{
+  "executiveSummary": "Riassunto in 2-3 frasi dello stato della community e trend principale",
+  "healthScore": numero da 1 a 100,
+  "trend": "growing" | "stable" | "declining",
+  "priorityActions": [
+    {
+      "title": "Titolo azione",
+      "description": "Descrizione dettagliata cosa fare",
+      "priority": "high" | "medium" | "low",
+      "estimatedImpact": "Impatto previsto",
+      "timeframe": "Tempo per implementare (es. 1 settimana)"
+    }
+  ],
+  "advertisingOpportunities": [
+    {
+      "platform": "Nome piattaforma (Reddit, Twitter, Disboard, etc)",
+      "strategy": "Come promuovere",
+      "cost": "Gratuito" | "Budget basso" | "Budget medio",
+      "expectedReach": "Portata stimata"
+    }
+  ],
+  "recommendedServices": [
+    {
+      "name": "Nome servizio/tool",
+      "purpose": "A cosa serve",
+      "cost": "Gratuito" | "Freemium" | "A pagamento",
+      "link": "URL se disponibile"
+    }
+  ],
+  "kpiTargets": {
+    "memberGrowth": "Obiettivo membri prossimo mese",
+    "engagement": "Obiettivo engagement (messaggi/giorno)",
+    "retention": "Obiettivo retention"
+  },
+  "monthlyFocus": "Una frase che riassume su cosa concentrarsi questo mese"
+}
+
+IMPORTANTE: 
+- Fornisci 3-5 azioni prioritarie concrete e realizzabili
+- Suggerisci solo servizi/piattaforme gratuite o freemium per mantenere costi zero
+- Le strategie devono essere specifiche per community gaming italiana
+- Includi almeno un suggerimento per eventi/attivita da organizzare`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 2000
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    
+    return {
+      success: true,
+      report: result,
+      generatedAt: new Date(),
+      snapshot: snapshot
+    };
+  } catch (error) {
+    console.error('Strategy AI Error:', error);
+    return {
+      success: false,
+      error: error.message,
+      generatedAt: new Date()
+    };
+  }
+}
+
 const SCALING_THRESHOLDS = {
   channelUtilization: { low: 0.3, optimal: 0.7, high: 0.85 },
   orphanedRolesMax: 0.2,

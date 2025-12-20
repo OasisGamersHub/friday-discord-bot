@@ -39,8 +39,14 @@ import {
   getServiceCosts,
   getTopInviters,
   getRecentInvites,
-  getInviterStats
+  getInviterStats,
+  getLatestStrategyReport,
+  getStrategyReportHistory,
+  getMonthlySnapshot,
+  canRequestStrategyReport,
+  saveStrategyReport
 } from './modules/database.js';
+import { generateStrategyReport } from './modules/serverAnalyzer.js';
 
 const app = express();
 const PORT = 5000;
@@ -565,6 +571,7 @@ app.get('/', (req, res) => {
             <div class="tab" data-tab="ecosystem">🔄 Ecosystem</div>
             <div class="tab" data-tab="financial">💰 Financial</div>
             <div class="tab" data-tab="invites">🎫 Inviti</div>
+            <div class="tab" data-tab="strategy">🎯 Strategy</div>
             <div class="tab" data-tab="actions">🚀 Azioni</div>
             <div class="tab" data-tab="security">🛡️ Sicurezza</div>
             <div class="tab" data-tab="activity">📋 Attivita</div>
@@ -1566,6 +1573,75 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
             </div>
           </div>
           
+          <div id="strategy" class="tab-content">
+            <div class="card" style="border-left: 3px solid var(--primary);">
+              <h2>🎯 Strategy Intelligence</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Analisi AI Mensile:</strong> Friday analizza i dati del server e genera strategie personalizzate per far crescere la community.
+              </p>
+              <p style="color: var(--text-secondary);">
+                Report generato automaticamente ogni mese o su richiesta (cooldown 7 giorni).
+              </p>
+              <div style="margin-top: 16px;">
+                <button id="request-strategy-btn" onclick="requestStrategyReport()" style="padding: 12px 24px; background: var(--primary); color: var(--background); border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">🔄 Genera Nuovo Report</button>
+                <span id="strategy-cooldown" style="margin-left: 12px; color: var(--text-muted); font-size: 0.9rem;"></span>
+              </div>
+            </div>
+            
+            <div class="card" id="strategy-summary-card" style="display: none;">
+              <h2>📊 Executive Summary</h2>
+              <div id="strategy-summary" style="font-size: 1.1rem; line-height: 1.6;"></div>
+              <div style="display: flex; gap: 24px; margin-top: 16px; flex-wrap: wrap;">
+                <div class="stat-box" style="flex: 1; min-width: 150px;">
+                  <div style="font-size: 0.85rem; color: var(--text-muted);">Health Score</div>
+                  <div id="strategy-health" style="font-size: 2rem; font-weight: 700;"></div>
+                </div>
+                <div class="stat-box" style="flex: 1; min-width: 150px;">
+                  <div style="font-size: 0.85rem; color: var(--text-muted);">Trend</div>
+                  <div id="strategy-trend" style="font-size: 1.5rem; font-weight: 600;"></div>
+                </div>
+                <div class="stat-box" style="flex: 1; min-width: 150px;">
+                  <div style="font-size: 0.85rem; color: var(--text-muted);">Focus Mensile</div>
+                  <div id="strategy-focus" style="font-size: 0.95rem; color: var(--text-primary);"></div>
+                </div>
+              </div>
+              <div style="margin-top: 12px; font-size: 0.8rem; color: var(--text-muted);">
+                Ultimo aggiornamento: <span id="strategy-date"></span>
+              </div>
+            </div>
+            
+            <div class="card" id="strategy-actions-card" style="display: none;">
+              <h2>🎯 Azioni Prioritarie</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Strategie concrete da implementare per far crescere la community.</p>
+              <div id="strategy-actions" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+            
+            <div class="card" id="strategy-advertising-card" style="display: none;">
+              <h2>📣 Opportunita Pubblicita</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Dove promuovere il server per attirare nuovi membri (focus gratuito).</p>
+              <div id="strategy-advertising" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;"></div>
+            </div>
+            
+            <div class="card" id="strategy-services-card" style="display: none;">
+              <h2>🛠️ Servizi Consigliati</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Tool e servizi gratuiti/freemium per potenziare il server.</p>
+              <div id="strategy-services" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;"></div>
+            </div>
+            
+            <div class="card" id="strategy-kpi-card" style="display: none;">
+              <h2>📈 Obiettivi Prossimo Mese</h2>
+              <div id="strategy-kpi" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;"></div>
+            </div>
+            
+            <div class="card">
+              <h2>📜 Storico Report</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Ultimi 6 report strategici generati.</p>
+              <div id="strategy-history" style="display: flex; flex-direction: column; gap: 8px;">
+                <p style="color: var(--text-muted);">Nessun report precedente</p>
+              </div>
+            </div>
+          </div>
+          
           <div class="footer">
             <p>Friday Bot per <strong>Oasis Gamers Hub</strong> | Sviluppato con ❤️</p>
           </div>
@@ -2189,6 +2265,7 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
           loadFinancial();
           loadInvitesLeaderboard();
           loadRecentInvites();
+          loadStrategyReport();
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
@@ -2264,6 +2341,90 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
               }
             } catch (e) {
               resultDiv.innerHTML = '<p style="color: var(--error);">Errore di connessione</p>';
+            }
+          }
+          
+          async function loadStrategyReport() {
+            try {
+              const res = await fetch('/api/strategy/latest');
+              const data = await res.json();
+              
+              const cooldownRes = await fetch('/api/strategy/cooldown');
+              const cooldownData = await cooldownRes.json();
+              
+              if (!cooldownData.canRequest) {
+                document.getElementById('request-strategy-btn').disabled = true;
+                document.getElementById('request-strategy-btn').style.opacity = '0.5';
+                document.getElementById('strategy-cooldown').textContent = 'Prossimo report disponibile tra ' + (7 - cooldownData.daysSinceLastReport) + ' giorni';
+              }
+              
+              if (data.report) {
+                const r = data.report;
+                
+                document.getElementById('strategy-summary-card').style.display = 'block';
+                document.getElementById('strategy-summary').textContent = r.executiveSummary || '';
+                
+                const healthScore = r.healthScore || 0;
+                document.getElementById('strategy-health').textContent = healthScore + '/100';
+                document.getElementById('strategy-health').style.color = healthScore >= 70 ? '#22C55E' : healthScore >= 40 ? '#EAB308' : '#EF4444';
+                
+                const trendMap = { growing: '📈 In crescita', stable: '➡️ Stabile', declining: '📉 In calo' };
+                document.getElementById('strategy-trend').textContent = trendMap[r.trend] || r.trend;
+                document.getElementById('strategy-focus').textContent = r.monthlyFocus || '';
+                document.getElementById('strategy-date').textContent = new Date(data.createdAt).toLocaleDateString('it-IT');
+                
+                if (r.priorityActions && r.priorityActions.length > 0) {
+                  document.getElementById('strategy-actions-card').style.display = 'block';
+                  document.getElementById('strategy-actions').innerHTML = r.priorityActions.map(a => {
+                    const priorityColor = a.priority === 'high' ? '#EF4444' : a.priority === 'medium' ? '#EAB308' : '#22C55E';
+                    const priorityIcon = a.priority === 'high' ? '🔴' : a.priority === 'medium' ? '🟡' : '🟢';
+                    return '<div class="activity-item" style="border-left: 3px solid ' + priorityColor + '; padding-left: 12px;"><div style="display: flex; justify-content: space-between; align-items: center;"><strong>' + priorityIcon + ' ' + a.title + '</strong><span style="font-size: 0.75rem; color: var(--text-muted);">' + (a.timeframe || '') + '</span></div><p style="margin: 8px 0 4px 0; color: var(--text-secondary);">' + a.description + '</p><div style="font-size: 0.8rem; color: var(--primary);">Impatto: ' + (a.estimatedImpact || 'Non specificato') + '</div></div>';
+                  }).join('');
+                }
+                
+                if (r.advertisingOpportunities && r.advertisingOpportunities.length > 0) {
+                  document.getElementById('strategy-advertising-card').style.display = 'block';
+                  document.getElementById('strategy-advertising').innerHTML = r.advertisingOpportunities.map(a => '<div class="stat-box" style="text-align: left; padding: 16px;"><div style="font-weight: 600; color: var(--primary); margin-bottom: 8px;">' + a.platform + '</div><p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 8px 0;">' + a.strategy + '</p><div style="display: flex; justify-content: space-between; font-size: 0.75rem;"><span style="color: ' + (a.cost === 'Gratuito' ? '#22C55E' : '#EAB308') + ';">' + a.cost + '</span><span style="color: var(--text-muted);">' + (a.expectedReach || '') + '</span></div></div>').join('');
+                }
+                
+                if (r.recommendedServices && r.recommendedServices.length > 0) {
+                  document.getElementById('strategy-services-card').style.display = 'block';
+                  document.getElementById('strategy-services').innerHTML = r.recommendedServices.map(s => '<div class="stat-box" style="text-align: left; padding: 16px;"><div style="font-weight: 600; color: var(--secondary); margin-bottom: 8px;">' + s.name + '</div><p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 8px 0;">' + s.purpose + '</p><div style="font-size: 0.75rem; color: ' + (s.cost === 'Gratuito' ? '#22C55E' : '#EAB308') + ';">' + s.cost + '</div>' + (s.link ? '<a href="' + s.link + '" target="_blank" style="font-size: 0.75rem; color: var(--primary);">Vai al sito</a>' : '') + '</div>').join('');
+                }
+                
+                if (r.kpiTargets) {
+                  document.getElementById('strategy-kpi-card').style.display = 'block';
+                  document.getElementById('strategy-kpi').innerHTML = '<div class="stat-box"><div style="font-size: 0.85rem; color: var(--text-muted);">Crescita Membri</div><div style="font-size: 1.1rem; font-weight: 600; color: var(--primary);">' + (r.kpiTargets.memberGrowth || '-') + '</div></div><div class="stat-box"><div style="font-size: 0.85rem; color: var(--text-muted);">Engagement</div><div style="font-size: 1.1rem; font-weight: 600; color: var(--primary);">' + (r.kpiTargets.engagement || '-') + '</div></div><div class="stat-box"><div style="font-size: 0.85rem; color: var(--text-muted);">Retention</div><div style="font-size: 1.1rem; font-weight: 600; color: var(--primary);">' + (r.kpiTargets.retention || '-') + '</div></div>';
+                }
+              }
+              
+              const historyRes = await fetch('/api/strategy/history');
+              const historyData = await historyRes.json();
+              if (historyData.history && historyData.history.length > 0) {
+                document.getElementById('strategy-history').innerHTML = historyData.history.map(h => '<div class="activity-item" style="display: flex; justify-content: space-between; align-items: center;"><div><strong>' + new Date(h.createdAt).toLocaleDateString('it-IT') + '</strong> - Score: ' + (h.report?.healthScore || '-') + '/100</div><div style="font-size: 0.8rem; color: var(--text-muted);">' + (h.report?.trend || '') + '</div></div>').join('');
+              }
+            } catch (e) { console.log('Strategy error:', e); }
+          }
+          
+          async function requestStrategyReport() {
+            const btn = document.getElementById('request-strategy-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Generazione in corso...';
+            
+            try {
+              const res = await fetch('/api/strategy/generate', { method: 'POST' });
+              const data = await res.json();
+              
+              if (data.success) {
+                btn.textContent = '✅ Report generato!';
+                loadStrategyReport();
+              } else {
+                btn.textContent = '❌ ' + (data.error || 'Errore');
+                setTimeout(() => { btn.textContent = '🔄 Genera Nuovo Report'; btn.disabled = false; }, 3000);
+              }
+            } catch (e) {
+              btn.textContent = '❌ Errore connessione';
+              setTimeout(() => { btn.textContent = '🔄 Genera Nuovo Report'; btn.disabled = false; }, 3000);
             }
           }
           
@@ -3151,6 +3312,108 @@ app.get('/api/invites/qrcode', requireAuth, apiRateLimit, async (req, res) => {
     res.json({ qrCode: qrDataUrl, inviteUrl });
   } catch (error) {
     res.status(500).json({ error: 'Errore generazione QR code' });
+  }
+});
+
+// ============================================
+// STRATEGY API ENDPOINTS
+// ============================================
+
+app.get('/api/strategy/latest', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ report: null });
+  }
+  
+  try {
+    const latest = await getLatestStrategyReport(guildId);
+    if (latest) {
+      res.json({ report: latest.report, createdAt: latest.createdAt, snapshot: latest.snapshot });
+    } else {
+      res.json({ report: null });
+    }
+  } catch (error) {
+    res.json({ report: null, error: error.message });
+  }
+});
+
+app.get('/api/strategy/history', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ history: [] });
+  }
+  
+  try {
+    const history = await getStrategyReportHistory(guildId, 6);
+    res.json({ history });
+  } catch (error) {
+    res.json({ history: [], error: error.message });
+  }
+});
+
+app.get('/api/strategy/cooldown', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ canRequest: true });
+  }
+  
+  try {
+    const cooldown = await canRequestStrategyReport(guildId);
+    res.json(cooldown);
+  } catch (error) {
+    res.json({ canRequest: true, error: error.message });
+  }
+});
+
+app.post('/api/strategy/generate', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.status(400).json({ success: false, error: 'Server non configurato' });
+  }
+  
+  try {
+    const cooldown = await canRequestStrategyReport(guildId);
+    if (!cooldown.canRequest) {
+      return res.status(429).json({ 
+        success: false, 
+        error: `Prossimo report disponibile tra ${7 - cooldown.daysSinceLastReport} giorni` 
+      });
+    }
+    
+    const snapshot = await getMonthlySnapshot(guildId);
+    
+    const structureData = getStructureData();
+    const guildStats = getGuildStats(guildId);
+    
+    const serverInfo = {
+      guildName: guildStats?.name || 'Oasis Gamers Hub',
+      memberCount: guildStats?.memberCount || 0,
+      channelCount: guildStats?.channelCount || 0,
+      inviteLink: 'https://discord.gg/fg8FG6BhBe'
+    };
+    
+    const result = await generateStrategyReport(snapshot, serverInfo);
+    
+    if (result.success) {
+      await saveStrategyReport(guildId, {
+        report: result.report,
+        snapshot: result.snapshot,
+        generatedAt: result.generatedAt
+      });
+      
+      addActivityLog({
+        type: 'strategy_generated',
+        guildId,
+        message: 'Report strategico AI generato - Score: ' + result.report.healthScore
+      });
+      
+      res.json({ success: true, report: result.report });
+    } else {
+      res.status(500).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error('Strategy generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
