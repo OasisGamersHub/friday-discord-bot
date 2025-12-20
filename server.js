@@ -35,7 +35,10 @@ import {
   getShopItems,
   saveShopItem,
   deleteShopItem,
-  getServiceCosts
+  getServiceCosts,
+  getTopInviters,
+  getRecentInvites,
+  getInviterStats
 } from './modules/database.js';
 
 const app = express();
@@ -560,6 +563,7 @@ app.get('/', (req, res) => {
             <div class="tab" data-tab="structure">🏗️ Structure</div>
             <div class="tab" data-tab="ecosystem">🔄 Ecosystem</div>
             <div class="tab" data-tab="financial">💰 Financial</div>
+            <div class="tab" data-tab="invites">🎫 Inviti</div>
             <div class="tab" data-tab="actions">🚀 Azioni</div>
             <div class="tab" data-tab="security">🛡️ Sicurezza</div>
             <div class="tab" data-tab="activity">📋 Attivita</div>
@@ -1474,6 +1478,66 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
             </div>
           </div>
           
+          <div id="invites" class="tab-content">
+            <div class="card" style="border-left: 3px solid var(--primary);">
+              <h2>🎫 Sistema Inviti & Premi</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Come funziona:</strong> Friday traccia automaticamente chi invita nuovi membri e assegna ruoli premio al raggiungimento delle milestone.
+              </p>
+              <p style="color: var(--text-secondary);">
+                <strong>Integrazione MEE6:</strong> I ruoli vengono assegnati da Friday. Per i coins MEE6, segui i suggerimenti nel DM di congratulazioni.
+              </p>
+            </div>
+            
+            <div class="card">
+              <h2>🏆 Classifica Top Inviters</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">I membri che hanno portato più persone nel server. Aggiornata in tempo reale.</p>
+              <div id="invites-leaderboard" style="display: flex; flex-direction: column; gap: 8px;">
+                <p style="color: var(--text-muted);">Caricamento classifica...</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>🎖️ Milestone & Premi</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Ruoli assegnati automaticamente al raggiungimento di ogni soglia di inviti.</p>
+              <div id="invites-milestones" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                <div class="stat-box" style="border-left: 3px solid #3498db;">
+                  <div style="font-weight: 600; color: #3498db;">5 Inviti</div>
+                  <div style="font-size: 0.9rem; color: var(--text-primary);">Recruiter</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">+500 coins suggeriti</div>
+                </div>
+                <div class="stat-box" style="border-left: 3px solid #9b59b6;">
+                  <div style="font-weight: 600; color: #9b59b6;">10 Inviti</div>
+                  <div style="font-size: 0.9rem; color: var(--text-primary);">Super Recruiter</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">+1500 coins suggeriti</div>
+                </div>
+                <div class="stat-box" style="border-left: 3px solid #f1c40f;">
+                  <div style="font-weight: 600; color: #f1c40f;">25 Inviti</div>
+                  <div style="font-size: 0.9rem; color: var(--text-primary);">Elite Recruiter</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">+3000 coins suggeriti</div>
+                </div>
+                <div class="stat-box" style="border-left: 3px solid #e74c3c;">
+                  <div style="font-weight: 600; color: #e74c3c;">50 Inviti</div>
+                  <div style="font-size: 0.9rem; color: var(--text-primary);">Leggenda</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">+5000 coins suggeriti</div>
+                </div>
+                <div class="stat-box" style="border-left: 3px solid #1abc9c;">
+                  <div style="font-weight: 600; color: #1abc9c;">100 Inviti</div>
+                  <div style="font-size: 0.9rem; color: var(--text-primary);">Immortale</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">+10000 coins suggeriti</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>📜 Inviti Recenti</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Ultimi 20 membri invitati con tracking di chi li ha portati.</p>
+              <div id="invites-recent" style="display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;">
+                <p style="color: var(--text-muted);">Caricamento inviti recenti...</p>
+              </div>
+            </div>
+          </div>
+          
           <div class="footer">
             <p>Friday Bot per <strong>Oasis Gamers Hub</strong> | Sviluppato con ❤️</p>
           </div>
@@ -2095,6 +2159,8 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
           loadShopItems();
           loadShopSuggestions();
           loadFinancial();
+          loadInvitesLeaderboard();
+          loadRecentInvites();
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
@@ -2108,6 +2174,43 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
           setInterval(loadEcosystem, 120000);
           setInterval(loadShopItems, 120000);
           setInterval(loadFinancial, 120000);
+          setInterval(loadInvitesLeaderboard, 60000);
+          setInterval(loadRecentInvites, 60000);
+          
+          async function loadInvitesLeaderboard() {
+            try {
+              const res = await fetch('/api/invites/leaderboard');
+              const data = await res.json();
+              
+              const container = document.getElementById('invites-leaderboard');
+              if (data.leaderboard && data.leaderboard.length > 0) {
+                container.innerHTML = data.leaderboard.map((inv, i) => {
+                  const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
+                  return '<div class="activity-item" style="display: flex; justify-content: space-between; align-items: center;"><div><span style="font-size: 1.2rem; margin-right: 8px;">' + medal + '</span><strong>' + inv.username + '</strong></div><div style="font-weight: 600; color: var(--primary);">' + inv.invites + ' inviti</div></div>';
+                }).join('');
+              } else {
+                container.innerHTML = '<p style="color: var(--text-muted);">Nessun invito tracciato ancora</p>';
+              }
+            } catch (e) { console.log('Leaderboard error:', e); }
+          }
+          
+          async function loadRecentInvites() {
+            try {
+              const res = await fetch('/api/invites/recent');
+              const data = await res.json();
+              
+              const container = document.getElementById('invites-recent');
+              if (data.invites && data.invites.length > 0) {
+                container.innerHTML = data.invites.map(inv => {
+                  const date = new Date(inv.date).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                  const validIcon = inv.valid ? '✅' : '❌';
+                  return '<div class="activity-item" style="display: flex; justify-content: space-between; align-items: center;"><div>' + validIcon + ' <strong>' + inv.inviter + '</strong> ha invitato <strong>' + inv.invited + '</strong></div><div style="font-size: 0.8rem; color: var(--text-muted);">' + date + '</div></div>';
+                }).join('');
+              } else {
+                container.innerHTML = '<p style="color: var(--text-muted);">Nessun invito recente</p>';
+              }
+            } catch (e) { console.log('Recent invites error:', e); }
+          }
           
           async function loadStructure() {
             try {
@@ -2912,6 +3015,64 @@ app.get('/api/financial/costs', requireAuth, apiRateLimit, async (req, res) => {
       error: error.message 
     });
   }
+});
+
+// ============================================
+// INVITES API ENDPOINTS
+// ============================================
+
+app.get('/api/invites/leaderboard', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ leaderboard: [] });
+  }
+  
+  try {
+    const topInviters = await getTopInviters(guildId, 10);
+    const leaderboard = topInviters.map((inv, index) => ({
+      rank: index + 1,
+      userId: inv._id,
+      username: inv.username,
+      invites: inv.count
+    }));
+    
+    res.json({ leaderboard });
+  } catch (error) {
+    res.json({ leaderboard: [], error: error.message });
+  }
+});
+
+app.get('/api/invites/recent', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ invites: [] });
+  }
+  
+  try {
+    const recentInvites = await getRecentInvites(guildId, 20);
+    const invites = recentInvites.map(inv => ({
+      inviter: inv.inviterUsername,
+      invited: inv.invitedUsername,
+      valid: inv.valid,
+      date: inv.createdAt
+    }));
+    
+    res.json({ invites });
+  } catch (error) {
+    res.json({ invites: [], error: error.message });
+  }
+});
+
+app.get('/api/invites/milestones', requireAuth, apiRateLimit, async (req, res) => {
+  const milestones = [
+    { threshold: 5, roleName: 'Recruiter', coinsHint: 500, color: '#3498db' },
+    { threshold: 10, roleName: 'Super Recruiter', coinsHint: 1500, color: '#9b59b6' },
+    { threshold: 25, roleName: 'Elite Recruiter', coinsHint: 3000, color: '#f1c40f' },
+    { threshold: 50, roleName: 'Leggenda', coinsHint: 5000, color: '#e74c3c' },
+    { threshold: 100, roleName: 'Immortale', coinsHint: 10000, color: '#1abc9c' }
+  ];
+  
+  res.json({ milestones });
 });
 
 app.get('/auth/discord', (req, res) => {

@@ -31,7 +31,12 @@ import {
   getConfigBackups,
   getPendingCommands,
   updateCommandStatus,
-  cleanOldCommands
+  cleanOldCommands,
+  saveInvite,
+  getInviterStats,
+  getTopInviters,
+  getUserMilestonesClaimed,
+  claimUserMilestone
 } from './modules/database.js';
 import {
   getCachedAudit,
@@ -54,9 +59,22 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildInvites
   ]
 });
+
+// Cache per tracciare gli inviti attivi
+const guildInvites = new Map();
+
+// Milestones inviti con ruoli premio
+const INVITE_MILESTONES = [
+  { threshold: 5, roleName: 'Recruiter', color: '#3498db', coinsHint: 500 },
+  { threshold: 10, roleName: 'Super Recruiter', color: '#9b59b6', coinsHint: 1500 },
+  { threshold: 25, roleName: 'Elite Recruiter', color: '#f1c40f', coinsHint: 3000 },
+  { threshold: 50, roleName: 'Leggenda', color: '#e74c3c', coinsHint: 5000 },
+  { threshold: 100, roleName: 'Immortale', color: '#1abc9c', coinsHint: 10000 }
+];
 
 const serverStats = new Map();
 
@@ -92,6 +110,14 @@ client.once('ready', async () => {
       ownerId: guild.ownerId,
       icon: guild.iconURL()
     });
+    
+    // Carica inviti nella cache per tracking
+    try {
+      const invites = await guild.invites.fetch();
+      guildInvites.set(guild.id, new Map(invites.map(inv => [inv.code, inv.uses])));
+    } catch (e) {
+      console.log(`Impossibile caricare inviti per ${guild.name}`);
+    }
   }
   
   addActivityLog({
@@ -100,6 +126,21 @@ client.once('ready', async () => {
   });
   
   setupScheduledTasks();
+});
+
+// Listener per aggiornare cache inviti
+client.on('inviteCreate', async invite => {
+  const invites = guildInvites.get(invite.guild.id);
+  if (invites) {
+    invites.set(invite.code, invite.uses);
+  }
+});
+
+client.on('inviteDelete', async invite => {
+  const invites = guildInvites.get(invite.guild.id);
+  if (invites) {
+    invites.delete(invite.code);
+  }
 });
 
 function setupScheduledTasks() {
@@ -498,6 +539,9 @@ client.on('guildMemberAdd', async member => {
     }).catch(err => console.error('Metrics save error:', err.message));
   }
   
+  // Track invites - trova chi ha invitato questo membro
+  await trackInviteUsage(member);
+  
   checkMilestones(member.guild).catch(err => console.error('Milestone check error:', err.message));
   
   const guildId = member.guild.id;
@@ -602,6 +646,124 @@ async function handleWelcome(member) {
     });
   } catch (e) {
     console.log('Errore invio welcome:', e.message);
+  }
+}
+
+// ============================================
+// INVITE TRACKING & MILESTONE SYSTEM
+// ============================================
+
+async function trackInviteUsage(member) {
+  const guild = member.guild;
+  const guildId = guild.id;
+  
+  try {
+    // Ottieni inviti attuali
+    const currentInvites = await guild.invites.fetch();
+    const cachedInvites = guildInvites.get(guildId) || new Map();
+    
+    // Trova quale invito è stato usato
+    let usedInvite = null;
+    for (const [code, invite] of currentInvites) {
+      const oldUses = cachedInvites.get(code) || 0;
+      if (invite.uses > oldUses) {
+        usedInvite = invite;
+        break;
+      }
+    }
+    
+    // Aggiorna cache
+    guildInvites.set(guildId, new Map(currentInvites.map(inv => [inv.code, inv.uses])));
+    
+    if (!usedInvite || !usedInvite.inviter) {
+      console.log(`Invito non tracciabile per ${member.user.tag}`);
+      return;
+    }
+    
+    // Salva invito nel database
+    await saveInvite(guildId, {
+      inviterId: usedInvite.inviter.id,
+      inviterUsername: usedInvite.inviter.tag,
+      invitedId: member.id,
+      invitedUsername: member.user.tag,
+      inviteCode: usedInvite.code,
+      valid: !member.user.bot
+    });
+    
+    // Log attività
+    addActivityLog({
+      type: 'invite_tracked',
+      guildId,
+      message: `${usedInvite.inviter.tag} ha invitato ${member.user.tag}`
+    });
+    
+    // Controlla milestone per l'invitatore
+    await checkInviterMilestones(guild, usedInvite.inviter.id);
+    
+  } catch (error) {
+    console.error('Errore tracking invito:', error.message);
+  }
+}
+
+async function checkInviterMilestones(guild, inviterId) {
+  try {
+    // Ottieni stats invitatore
+    const stats = await getInviterStats(guild.id, inviterId);
+    const validInvites = stats.valid;
+    
+    // Ottieni milestone già reclamate
+    const claimed = await getUserMilestonesClaimed(guild.id, inviterId);
+    
+    // Trova milestone da assegnare
+    for (const milestone of INVITE_MILESTONES) {
+      if (validInvites >= milestone.threshold && !claimed.includes(milestone.threshold)) {
+        // Assegna ruolo milestone
+        await assignMilestoneRole(guild, inviterId, milestone);
+        await claimUserMilestone(guild.id, inviterId, milestone.threshold);
+        
+        // Notifica nel log
+        addActivityLog({
+          type: 'milestone_reached',
+          guildId: guild.id,
+          message: `🎉 Milestone ${milestone.threshold} inviti raggiunta! Ruolo "${milestone.roleName}" assegnato`
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Errore check milestone:', error.message);
+  }
+}
+
+async function assignMilestoneRole(guild, userId, milestone) {
+  try {
+    // Cerca o crea il ruolo
+    let role = guild.roles.cache.find(r => r.name === milestone.roleName);
+    
+    if (!role) {
+      // Crea il ruolo se non esiste
+      role = await guild.roles.create({
+        name: milestone.roleName,
+        color: milestone.color,
+        reason: `Ruolo milestone inviti Friday - ${milestone.threshold} inviti`
+      });
+      console.log(`Creato ruolo: ${milestone.roleName}`);
+    }
+    
+    // Assegna ruolo al membro
+    const member = await guild.members.fetch(userId);
+    if (member && !member.roles.cache.has(role.id)) {
+      await member.roles.add(role);
+      console.log(`Ruolo ${milestone.roleName} assegnato a ${member.user.tag}`);
+      
+      // Invia DM di congratulazioni
+      try {
+        await member.send(`🎉 **Congratulazioni!**\n\nHai raggiunto **${milestone.threshold} inviti** nel server **${guild.name}**!\n\nHai ottenuto il ruolo **${milestone.roleName}**!\n\n💡 *Suggerimento MEE6:* Chiedi all'owner di assegnarti ${milestone.coinsHint} coins come premio aggiuntivo!`);
+      } catch (e) {
+        console.log('Impossibile inviare DM milestone');
+      }
+    }
+  } catch (error) {
+    console.error('Errore assegnazione ruolo milestone:', error.message);
   }
 }
 

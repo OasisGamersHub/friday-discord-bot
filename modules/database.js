@@ -569,3 +569,139 @@ export async function getLatestEconomyAnalysis(guildId) {
     return null;
   }
 }
+
+// ============================================
+// INVITE TRACKING SYSTEM
+// ============================================
+
+export async function saveInvite(guildId, inviteData) {
+  if (!db) return false;
+  
+  try {
+    await db.collection('invites').insertOne({
+      guildId,
+      inviterId: inviteData.inviterId,
+      inviterUsername: inviteData.inviterUsername,
+      invitedId: inviteData.invitedId,
+      invitedUsername: inviteData.invitedUsername,
+      inviteCode: inviteData.inviteCode,
+      valid: inviteData.valid !== false,
+      createdAt: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error('Errore salvataggio invito:', error.message);
+    return false;
+  }
+}
+
+export async function getInviterStats(guildId, inviterId) {
+  if (!db) return { total: 0, valid: 0, invalid: 0 };
+  
+  try {
+    const invites = await db.collection('invites')
+      .find({ guildId, inviterId })
+      .toArray();
+    
+    return {
+      total: invites.length,
+      valid: invites.filter(i => i.valid).length,
+      invalid: invites.filter(i => !i.valid).length
+    };
+  } catch (error) {
+    console.error('Errore lettura stats invitatore:', error.message);
+    return { total: 0, valid: 0, invalid: 0 };
+  }
+}
+
+export async function getTopInviters(guildId, limit = 10) {
+  if (!db) return [];
+  
+  try {
+    const pipeline = [
+      { $match: { guildId, valid: true } },
+      { $group: { 
+        _id: '$inviterId', 
+        username: { $first: '$inviterUsername' },
+        count: { $sum: 1 } 
+      }},
+      { $sort: { count: -1 } },
+      { $limit: limit }
+    ];
+    
+    return await db.collection('invites').aggregate(pipeline).toArray();
+  } catch (error) {
+    console.error('Errore lettura top inviters:', error.message);
+    return [];
+  }
+}
+
+export async function getInviteMilestones(guildId) {
+  if (!db) return null;
+  
+  try {
+    return await db.collection('inviteMilestones').findOne({ guildId });
+  } catch (error) {
+    console.error('Errore lettura milestones:', error.message);
+    return null;
+  }
+}
+
+export async function saveInviteMilestones(guildId, milestones) {
+  if (!db) return false;
+  
+  try {
+    await db.collection('inviteMilestones').updateOne(
+      { guildId },
+      { $set: { milestones, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    return true;
+  } catch (error) {
+    console.error('Errore salvataggio milestones:', error.message);
+    return false;
+  }
+}
+
+export async function getUserMilestonesClaimed(guildId, userId) {
+  if (!db) return [];
+  
+  try {
+    const doc = await db.collection('userMilestones').findOne({ guildId, userId });
+    return doc?.claimed || [];
+  } catch (error) {
+    console.error('Errore lettura milestones utente:', error.message);
+    return [];
+  }
+}
+
+export async function claimUserMilestone(guildId, userId, milestone) {
+  if (!db) return false;
+  
+  try {
+    await db.collection('userMilestones').updateOne(
+      { guildId, userId },
+      { $addToSet: { claimed: milestone }, $set: { updatedAt: new Date() } },
+      { upsert: true }
+    );
+    return true;
+  } catch (error) {
+    console.error('Errore claim milestone:', error.message);
+    return false;
+  }
+}
+
+export async function getRecentInvites(guildId, limit = 20) {
+  if (!db) return [];
+  
+  try {
+    return await db.collection('invites')
+      .find({ guildId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
+  } catch (error) {
+    console.error('Errore lettura inviti recenti:', error.message);
+    return [];
+  }
+}
