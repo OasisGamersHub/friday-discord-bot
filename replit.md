@@ -197,16 +197,66 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Deploy su Fly.io
 
-1. Installa Fly CLI: `curl -L https://fly.io/install.sh | sh`
-2. Login: `fly auth login`
-3. Launch: `fly launch --name friday-discord-bot`
-4. Configura secrets:
-   - `fly secrets set DISCORD_BOT_TOKEN="..."`
-   - `fly secrets set DISCORD_CLIENT_ID="..."`
-   - `fly secrets set DISCORD_CLIENT_SECRET="..."`
-   - `fly secrets set SESSION_SECRET="..."`
-   - `fly secrets set MONGODB_URI="..."` (opzionale)
-5. Deploy: `fly deploy`
+### Configurazione Iniziale (già fatta)
+- App: `friday-discord-bot`
+- Organizzazione: `oasis-gamers-hub-325`
+- Regione: Frankfurt (fra)
+- URL pubblico: https://friday.streambridgepro.com
+- URL Fly.io: https://friday-discord-bot.fly.dev
+
+### Token di Autenticazione
+Il deploy richiede un **Organization Token** da Fly.io:
+1. Vai su https://fly.io (login con oasisgaminghub@proton.me)
+2. Seleziona organizzazione **"Oasis Gamers Hub"** in alto a sinistra
+3. Clicca **"Tokens"** nel menu laterale
+4. Crea un nuovo token o usa quello esistente "StreamBridge Pro"
+5. Salva il token nel secret `FLY_API_TOKEN` su Replit
+
+**IMPORTANTE**: I token scadono! Se il deploy fallisce con "401 Unauthorized", rigenera il token.
+
+### Sincronizzare Secrets da Replit a Fly.io
+Quando modifichi secrets su Replit (es. MONGODB_URI), devi sincronizzarli su Fly.io:
+
+```bash
+FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly secrets set \
+  DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
+  DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
+  DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
+  SESSION_SECRET="$SESSION_SECRET" \
+  MONGODB_URI="$MONGODB_URI" \
+  DASHBOARD_URL="https://friday.streambridgepro.com" \
+  OASIS_GUILD_ID="1435348267268313090"
+```
+
+### Comandi Deploy Utili
+```bash
+# Verifica stato app
+FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly status
+
+# Lista secrets attuali
+FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly secrets list
+
+# Sincronizza tutti i secrets (comando sopra)
+
+# Riavvia le macchine senza nuovo deploy
+FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly machines restart
+
+# Logs in tempo reale
+FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly logs
+```
+
+### Problemi Comuni
+1. **Login fallisce sulla dashboard**: Mancano secrets su Fly.io, sincronizzali
+2. **401 Unauthorized durante deploy**: Token scaduto, rigeneralo su Fly.io
+3. **MongoDB connection error**: Password con caratteri speciali? Usa URL encoding (es. `@` diventa `%40`)
+4. **Bot non risponde**: Controlla i logs con `fly logs`
+
+### Nota su MONGODB_URI
+Se la password MongoDB contiene caratteri speciali, devono essere codificati:
+- `@` → `%40`
+- `#` → `%23`
+- `!` → `%21`
+- `$` → `%24`
 
 ## External Dependencies
 
