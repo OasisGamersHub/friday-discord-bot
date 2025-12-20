@@ -2,6 +2,7 @@ import express from 'express';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
+import QRCode from 'qrcode';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import {
@@ -1531,9 +1532,36 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
             
             <div class="card">
               <h2>📜 Inviti Recenti</h2>
-              <p style="color: var(--text-secondary); margin-bottom: 16px;">Ultimi 20 membri invitati con tracking di chi li ha portati.</p>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Ultimi 20 membri invitati con tracking di chi li ha portati e fascia di eta.</p>
               <div id="invites-recent" style="display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;">
                 <p style="color: var(--text-muted);">Caricamento inviti recenti...</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>📱 Genera QR Code Invito</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Crea un QR code da condividere per invitare nuovi membri. Scansiona con lo smartphone per unirsi al server.</p>
+              <div style="display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 280px;">
+                  <label style="display: block; margin-bottom: 8px; color: var(--text-secondary);">Link invito Discord:</label>
+                  <input type="text" id="qr-invite-url" placeholder="https://discord.gg/tuocodice" style="width: 100%; padding: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; font-size: 14px;">
+                  <button onclick="generateQRCode()" style="margin-top: 12px; padding: 12px 24px; background: var(--primary); color: var(--background); border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Genera QR Code</button>
+                </div>
+                <div id="qr-result" style="text-align: center; min-width: 200px;">
+                  <p style="color: var(--text-muted); font-size: 0.9rem;">Inserisci un link invito per generare il QR</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card" style="border-left: 3px solid var(--secondary);">
+              <h2>👥 Separazione Fasce Eta</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Sistema:</strong> Friday traccia se i nuovi membri hanno verificato la loro eta. Gli inviti sono contrassegnati con icone che indicano lo stato.
+              </p>
+              <div style="display: flex; gap: 24px; margin-top: 12px;">
+                <div><span style="font-size: 1.2rem;">🔵</span> Eta non ancora verificata</div>
+                <div><span style="font-size: 1.2rem;">🟢</span> Adulto verificato (18+)</div>
+                <div><span style="font-size: 1.2rem;">🟡</span> Minore verificato (-18)</div>
               </div>
             </div>
           </div>
@@ -2204,12 +2232,39 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
                 container.innerHTML = data.invites.map(inv => {
                   const date = new Date(inv.date).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                   const validIcon = inv.valid ? '✅' : '❌';
-                  return '<div class="activity-item" style="display: flex; justify-content: space-between; align-items: center;"><div>' + validIcon + ' <strong>' + inv.inviter + '</strong> ha invitato <strong>' + inv.invited + '</strong></div><div style="font-size: 0.8rem; color: var(--text-muted);">' + date + '</div></div>';
+                  const ageIcon = inv.ageStatus === 'adult' ? '🟢' : inv.ageStatus === 'minor' ? '🟡' : '🔵';
+                  return '<div class="activity-item" style="display: flex; justify-content: space-between; align-items: center;"><div>' + validIcon + ' ' + ageIcon + ' <strong>' + inv.inviter + '</strong> ha invitato <strong>' + inv.invited + '</strong></div><div style="font-size: 0.8rem; color: var(--text-muted);">' + date + '</div></div>';
                 }).join('');
               } else {
                 container.innerHTML = '<p style="color: var(--text-muted);">Nessun invito recente</p>';
               }
             } catch (e) { console.log('Recent invites error:', e); }
+          }
+          
+          async function generateQRCode() {
+            const urlInput = document.getElementById('qr-invite-url');
+            const resultDiv = document.getElementById('qr-result');
+            const inviteUrl = urlInput.value.trim();
+            
+            if (!inviteUrl || !inviteUrl.startsWith('https://discord.gg/')) {
+              resultDiv.innerHTML = '<p style="color: var(--error);">Inserisci un link Discord valido (https://discord.gg/...)</p>';
+              return;
+            }
+            
+            resultDiv.innerHTML = '<p style="color: var(--text-muted);">Generazione in corso...</p>';
+            
+            try {
+              const res = await fetch('/api/invites/qrcode?inviteUrl=' + encodeURIComponent(inviteUrl));
+              const data = await res.json();
+              
+              if (data.qrCode) {
+                resultDiv.innerHTML = '<img src="' + data.qrCode + '" alt="QR Code" style="max-width: 200px; border: 2px solid var(--primary); border-radius: 8px;"><p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 8px;">Scansiona per unirti al server</p><a href="' + data.qrCode + '" download="invite-qr.png" style="color: var(--primary); font-size: 0.85rem;">Scarica QR</a>';
+              } else {
+                resultDiv.innerHTML = '<p style="color: var(--error);">Errore: ' + (data.error || 'Generazione fallita') + '</p>';
+              }
+            } catch (e) {
+              resultDiv.innerHTML = '<p style="color: var(--error);">Errore di connessione</p>';
+            }
           }
           
           async function loadStructure() {
@@ -3054,7 +3109,8 @@ app.get('/api/invites/recent', requireAuth, apiRateLimit, async (req, res) => {
       inviter: inv.inviterUsername,
       invited: inv.invitedUsername,
       valid: inv.valid,
-      date: inv.createdAt
+      date: inv.createdAt,
+      ageStatus: inv.ageStatus || 'unknown'
     }));
     
     res.json({ invites });
@@ -3073,6 +3129,29 @@ app.get('/api/invites/milestones', requireAuth, apiRateLimit, async (req, res) =
   ];
   
   res.json({ milestones });
+});
+
+app.get('/api/invites/qrcode', requireAuth, apiRateLimit, async (req, res) => {
+  const { inviteUrl } = req.query;
+  
+  if (!inviteUrl || !inviteUrl.startsWith('https://discord.gg/')) {
+    return res.status(400).json({ error: 'URL invito non valido' });
+  }
+  
+  try {
+    const qrDataUrl = await QRCode.toDataURL(inviteUrl, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#4FD1C5',
+        light: '#000000'
+      }
+    });
+    
+    res.json({ qrCode: qrDataUrl, inviteUrl });
+  } catch (error) {
+    res.status(500).json({ error: 'Errore generazione QR code' });
+  }
 });
 
 app.get('/auth/discord', (req, res) => {

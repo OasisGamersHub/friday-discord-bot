@@ -653,6 +653,28 @@ async function handleWelcome(member) {
 // INVITE TRACKING & MILESTONE SYSTEM
 // ============================================
 
+const AGE_ROLE_PATTERNS = {
+  adult: ['adulto', 'over18', 'maggiorenne', '+18', '18+', 'adult', 'over 18', 'adulti', 'mature', 'verificato'],
+  minor: ['minore', 'under18', 'minorenne', '-18', 'teen', 'under 18', 'minorenni', 'ragazzo', 'ragazza']
+};
+
+function detectMemberAgeStatus(member) {
+  const memberRoles = member.roles.cache;
+  
+  for (const [roleId, role] of memberRoles) {
+    const lowerName = role.name.toLowerCase();
+    
+    if (AGE_ROLE_PATTERNS.adult.some(pattern => lowerName.includes(pattern))) {
+      return 'adult';
+    }
+    if (AGE_ROLE_PATTERNS.minor.some(pattern => lowerName.includes(pattern))) {
+      return 'minor';
+    }
+  }
+  
+  return 'unknown';
+}
+
 async function trackInviteUsage(member) {
   const guild = member.guild;
   const guildId = guild.id;
@@ -680,6 +702,9 @@ async function trackInviteUsage(member) {
       return;
     }
     
+    // Rileva fascia d'età del nuovo membro
+    const ageStatus = detectMemberAgeStatus(member);
+    
     // Salva invito nel database
     await saveInvite(guildId, {
       inviterId: usedInvite.inviter.id,
@@ -687,7 +712,8 @@ async function trackInviteUsage(member) {
       invitedId: member.id,
       invitedUsername: member.user.tag,
       inviteCode: usedInvite.code,
-      valid: !member.user.bot
+      valid: !member.user.bot,
+      ageStatus: ageStatus
     });
     
     // Log attività
