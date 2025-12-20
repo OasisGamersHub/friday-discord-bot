@@ -885,3 +885,395 @@ export function formatTextSuggestions(textSuggestions) {
   
   return text;
 }
+
+const SCALING_THRESHOLDS = {
+  channelUtilization: { low: 0.3, optimal: 0.7, high: 0.85 },
+  orphanedRolesMax: 0.2,
+  staffMemberRatio: { min: 0.02, max: 0.1 },
+  weeklyEngagement: { min: 0.1, target: 0.15 },
+  channelsPerMember: { min: 0.05, max: 0.3 }
+};
+
+const MEE6_ECONOMY_PATTERNS = {
+  currency: ['coin', 'moneta', 'soldi', 'gold', 'token', 'crediti', 'punti', 'gems', 'diamanti', 'stelline'],
+  shop: ['shop', 'negozio', 'store', 'acquista', 'compra', 'mercato'],
+  achievements: ['achievement', 'traguardo', 'obiettivo', 'premio', 'reward', 'badge', 'medaglia'],
+  premium: ['premium', 'vip', 'supporter', 'donatore', 'patron', 'boost', 'abbonato']
+};
+
+export async function analyzeServerScaling(guild, dailyMetrics = []) {
+  const channels = guild.channels.cache;
+  const roles = guild.roles.cache;
+  const memberCount = guild.memberCount;
+  
+  const textChannels = channels.filter(c => c.type === ChannelType.GuildText);
+  const voiceChannels = channels.filter(c => c.type === ChannelType.GuildVoice);
+  
+  const scaling = {
+    memberCount,
+    targetMembers: 1000,
+    progressToTarget: Math.min((memberCount / 1000) * 100, 100).toFixed(1),
+    channels: {
+      text: textChannels.size,
+      voice: voiceChannels.size,
+      total: textChannels.size + voiceChannels.size,
+      perMember: ((textChannels.size + voiceChannels.size) / memberCount).toFixed(3),
+      status: 'optimal'
+    },
+    roles: {
+      total: roles.size,
+      withMembers: 0,
+      orphaned: 0,
+      staffRoles: 0,
+      levelRoles: 0,
+      orphanedList: []
+    },
+    engagement: {
+      weeklyActive: 0,
+      weeklyMessages: 0,
+      weeklyJoins: 0,
+      weeklyLeaves: 0,
+      netGrowth: 0,
+      growthRate: 0
+    },
+    issues: [],
+    recommendations: [],
+    score: 100
+  };
+  
+  roles.forEach(role => {
+    if (role.id === guild.id) return;
+    
+    if (role.members.size > 0) {
+      scaling.roles.withMembers++;
+    } else {
+      scaling.roles.orphaned++;
+      if (scaling.roles.orphanedList.length < 5) {
+        scaling.roles.orphanedList.push(role.name);
+      }
+    }
+    
+    const lowerName = role.name.toLowerCase();
+    if (lowerName.includes('mod') || lowerName.includes('admin') || lowerName.includes('staff') || 
+        lowerName.includes('helper') || lowerName.includes('owner')) {
+      scaling.roles.staffRoles++;
+    }
+    
+    if (MEE6_ROLE_PATTERNS.some(pattern => pattern.test(role.name))) {
+      scaling.roles.levelRoles++;
+    }
+  });
+  
+  const orphanedRatio = scaling.roles.orphaned / Math.max(scaling.roles.total, 1);
+  const staffRatio = scaling.roles.staffRoles / Math.max(memberCount, 1);
+  const channelsPerMember = parseFloat(scaling.channels.perMember);
+  
+  if (dailyMetrics.length >= 7) {
+    const lastWeek = dailyMetrics.slice(-7);
+    scaling.engagement.weeklyMessages = lastWeek.reduce((sum, d) => sum + (d.messageCount || 0), 0);
+    scaling.engagement.weeklyJoins = lastWeek.reduce((sum, d) => sum + (d.joinCount || 0), 0);
+    scaling.engagement.weeklyLeaves = lastWeek.reduce((sum, d) => sum + (d.leaveCount || 0), 0);
+    scaling.engagement.netGrowth = scaling.engagement.weeklyJoins - scaling.engagement.weeklyLeaves;
+    scaling.engagement.growthRate = ((scaling.engagement.netGrowth / Math.max(memberCount, 1)) * 100).toFixed(2);
+  }
+  
+  if (orphanedRatio > SCALING_THRESHOLDS.orphanedRolesMax) {
+    scaling.issues.push({
+      type: 'orphaned_roles',
+      severity: 'medium',
+      message: `${scaling.roles.orphaned} ruoli senza membri (${(orphanedRatio * 100).toFixed(0)}%)`,
+      details: scaling.roles.orphanedList
+    });
+    scaling.score -= 10;
+    scaling.recommendations.push({
+      priority: 'medium',
+      action: 'cleanOrphanedRoles',
+      text: 'Elimina i ruoli inutilizzati per semplificare la gerarchia'
+    });
+  }
+  
+  if (channelsPerMember > SCALING_THRESHOLDS.channelsPerMember.max) {
+    scaling.channels.status = 'over_scaled';
+    scaling.issues.push({
+      type: 'too_many_channels',
+      severity: 'medium',
+      message: `Troppi canali per il numero di membri (${scaling.channels.total} canali per ${memberCount} membri)`
+    });
+    scaling.score -= 15;
+    scaling.recommendations.push({
+      priority: 'high',
+      action: 'mergeChannels',
+      text: 'Unisci canali simili o poco utilizzati per concentrare l\'attività'
+    });
+  } else if (channelsPerMember < SCALING_THRESHOLDS.channelsPerMember.min && memberCount > 50) {
+    scaling.channels.status = 'under_scaled';
+    scaling.issues.push({
+      type: 'few_channels',
+      severity: 'low',
+      message: `Pochi canali per il numero di membri - considera di espandere`
+    });
+    scaling.score -= 5;
+    scaling.recommendations.push({
+      priority: 'low',
+      action: 'addChannels',
+      text: 'Aggiungi canali tematici per diversificare le conversazioni'
+    });
+  }
+  
+  if (staffRatio < SCALING_THRESHOLDS.staffMemberRatio.min && memberCount > 30) {
+    scaling.issues.push({
+      type: 'understaffed',
+      severity: 'high',
+      message: `Team di moderazione ridotto (${scaling.roles.staffRoles} staff per ${memberCount} membri)`
+    });
+    scaling.score -= 15;
+    scaling.recommendations.push({
+      priority: 'high',
+      action: 'recruitStaff',
+      text: 'Recluta nuovi moderatori per gestire meglio la community'
+    });
+  } else if (staffRatio > SCALING_THRESHOLDS.staffMemberRatio.max) {
+    scaling.issues.push({
+      type: 'overstaffed',
+      severity: 'low',
+      message: `Team di moderazione molto ampio rispetto ai membri`
+    });
+    scaling.score -= 5;
+  }
+  
+  if (scaling.engagement.netGrowth < 0) {
+    scaling.issues.push({
+      type: 'negative_growth',
+      severity: 'high',
+      message: `Crescita negativa questa settimana: ${scaling.engagement.netGrowth} membri`
+    });
+    scaling.score -= 20;
+    scaling.recommendations.push({
+      priority: 'critical',
+      action: 'retentionStrategy',
+      text: 'Implementa strategie di retention: eventi, contenuti esclusivi, community engagement'
+    });
+  }
+  
+  if (memberCount < 100) {
+    scaling.recommendations.push({
+      priority: 'high',
+      action: 'growthPhase1',
+      text: 'Fase iniziale: focus su contenuti di qualità e inviti personali'
+    });
+  } else if (memberCount < 500) {
+    scaling.recommendations.push({
+      priority: 'high',
+      action: 'growthPhase2',
+      text: 'Fase crescita: attiva partnership, eventi cross-server, SEO Discord'
+    });
+  } else if (memberCount < 1000) {
+    scaling.recommendations.push({
+      priority: 'high',
+      action: 'growthPhase3',
+      text: 'Quasi al traguardo! Focus su community features e monetizzazione'
+    });
+  }
+  
+  scaling.score = Math.max(0, Math.min(100, scaling.score));
+  
+  return scaling;
+}
+
+export async function checkMEE6Economy(guild) {
+  const channels = guild.channels.cache;
+  const roles = guild.roles.cache;
+  const members = guild.members.cache;
+  
+  const mee6Bot = members.get(MEE6_BOT_ID);
+  
+  const economy = {
+    mee6Present: !!mee6Bot,
+    mee6Premium: false,
+    features: {
+      economy: { detected: false, channels: [], roles: [] },
+      achievements: { detected: false, channels: [], roles: [] },
+      monetization: { detected: false, channels: [], roles: [] },
+      leveling: { detected: false, channels: [], roles: [], levelCount: 0 }
+    },
+    gaps: [],
+    recommendations: [],
+    synergyScore: 0
+  };
+  
+  if (!mee6Bot) {
+    economy.gaps.push('MEE6 non presente nel server');
+    return economy;
+  }
+  
+  const mee6Role = roles.find(r => r.name.toLowerCase().includes('mee6'));
+  if (mee6Role && mee6Role.position > roles.size * 0.5) {
+    economy.mee6Premium = true;
+  }
+  
+  channels.forEach(channel => {
+    if (channel.type !== ChannelType.GuildText) return;
+    const lowerName = channel.name.toLowerCase();
+    
+    if (MEE6_ECONOMY_PATTERNS.currency.some(p => lowerName.includes(p)) ||
+        MEE6_ECONOMY_PATTERNS.shop.some(p => lowerName.includes(p))) {
+      economy.features.economy.detected = true;
+      economy.features.economy.channels.push(channel.name);
+    }
+    
+    if (MEE6_ECONOMY_PATTERNS.achievements.some(p => lowerName.includes(p))) {
+      economy.features.achievements.detected = true;
+      economy.features.achievements.channels.push(channel.name);
+    }
+    
+    if (MEE6_ECONOMY_PATTERNS.premium.some(p => lowerName.includes(p))) {
+      economy.features.monetization.detected = true;
+      economy.features.monetization.channels.push(channel.name);
+    }
+    
+    if (MEE6_FEATURES.leveling.some(p => lowerName.includes(p))) {
+      economy.features.leveling.detected = true;
+      economy.features.leveling.channels.push(channel.name);
+    }
+  });
+  
+  roles.forEach(role => {
+    const lowerName = role.name.toLowerCase();
+    
+    if (MEE6_ROLE_PATTERNS.some(pattern => pattern.test(role.name))) {
+      economy.features.leveling.detected = true;
+      economy.features.leveling.roles.push(role.name);
+      economy.features.leveling.levelCount++;
+    }
+    
+    if (MEE6_ECONOMY_PATTERNS.premium.some(p => lowerName.includes(p))) {
+      economy.features.monetization.detected = true;
+      economy.features.monetization.roles.push(role.name);
+    }
+    
+    if (MEE6_ECONOMY_PATTERNS.achievements.some(p => lowerName.includes(p))) {
+      economy.features.achievements.detected = true;
+      economy.features.achievements.roles.push(role.name);
+    }
+  });
+  
+  if (!economy.features.economy.detected) {
+    economy.gaps.push('Sistema economia MEE6 non attivo');
+    economy.recommendations.push({
+      priority: 'medium',
+      text: 'Attiva l\'economia MEE6 per aumentare engagement con valuta virtuale e shop'
+    });
+  }
+  
+  if (!economy.features.achievements.detected) {
+    economy.gaps.push('Nessun sistema achievements rilevato');
+    economy.recommendations.push({
+      priority: 'low',
+      text: 'Configura achievements/badge per premiare i membri attivi'
+    });
+  }
+  
+  if (!economy.features.monetization.detected) {
+    economy.gaps.push('Nessuna monetizzazione configurata');
+    economy.recommendations.push({
+      priority: 'high',
+      text: 'Configura ruoli premium o donazioni per supportare il server'
+    });
+  }
+  
+  if (economy.features.leveling.detected && economy.features.leveling.levelCount < 5) {
+    economy.gaps.push('Pochi ruoli livello configurati');
+    economy.recommendations.push({
+      priority: 'medium',
+      text: 'Aggiungi più ruoli livello per dare obiettivi ai membri'
+    });
+  }
+  
+  let score = 0;
+  if (economy.mee6Present) score += 20;
+  if (economy.mee6Premium) score += 10;
+  if (economy.features.economy.detected) score += 20;
+  if (economy.features.achievements.detected) score += 15;
+  if (economy.features.monetization.detected) score += 20;
+  if (economy.features.leveling.detected) score += 15;
+  
+  economy.synergyScore = score;
+  
+  return economy;
+}
+
+export function formatScalingReport(scaling, economy) {
+  let text = `**📊 ANALISI SCALING SERVER**\n\n`;
+  
+  text += `**🎯 Obiettivo 1000 Membri**\n`;
+  text += `Progresso: ${scaling.memberCount}/1000 (${scaling.progressToTarget}%)\n`;
+  text += `${'█'.repeat(Math.floor(parseFloat(scaling.progressToTarget) / 10))}${'░'.repeat(10 - Math.floor(parseFloat(scaling.progressToTarget) / 10))} \n\n`;
+  
+  text += `**📈 Punteggio Scaling: ${scaling.score}/100**\n`;
+  const scoreEmoji = scaling.score >= 80 ? '🟢' : scaling.score >= 60 ? '🟡' : '🔴';
+  text += `${scoreEmoji} ${scaling.score >= 80 ? 'Ottimo' : scaling.score >= 60 ? 'Buono' : 'Da migliorare'}\n\n`;
+  
+  text += `**📊 Struttura**\n`;
+  text += `• Canali: ${scaling.channels.text} testo + ${scaling.channels.voice} vocali\n`;
+  text += `• Ruoli: ${scaling.roles.total} (${scaling.roles.orphaned} inutilizzati)\n`;
+  text += `• Staff: ${scaling.roles.staffRoles} ruoli moderazione\n`;
+  text += `• Ruoli Livello: ${scaling.roles.levelRoles}\n\n`;
+  
+  if (scaling.engagement.weeklyMessages > 0 || scaling.engagement.weeklyJoins > 0) {
+    text += `**📈 Trend Settimanale**\n`;
+    text += `• Messaggi: ${scaling.engagement.weeklyMessages}\n`;
+    text += `• Nuovi membri: +${scaling.engagement.weeklyJoins}\n`;
+    text += `• Usciti: -${scaling.engagement.weeklyLeaves}\n`;
+    const growthEmoji = scaling.engagement.netGrowth >= 0 ? '📈' : '📉';
+    text += `• Crescita netta: ${growthEmoji} ${scaling.engagement.netGrowth} (${scaling.engagement.growthRate}%)\n\n`;
+  }
+  
+  if (scaling.issues.length > 0) {
+    text += `**⚠️ Problemi Rilevati**\n`;
+    scaling.issues.forEach(issue => {
+      const icon = issue.severity === 'high' ? '🔴' : issue.severity === 'medium' ? '🟡' : '🟢';
+      text += `${icon} ${issue.message}\n`;
+    });
+    text += `\n`;
+  }
+  
+  if (economy) {
+    text += `**💰 MEE6 Economy & Monetization**\n`;
+    text += `• MEE6: ${economy.mee6Present ? '✅ Presente' : '❌ Assente'}`;
+    if (economy.mee6Premium) text += ` (Premium)`;
+    text += `\n`;
+    text += `• Economia: ${economy.features.economy.detected ? '✅' : '❌'}\n`;
+    text += `• Achievements: ${economy.features.achievements.detected ? '✅' : '❌'}\n`;
+    text += `• Monetizzazione: ${economy.features.monetization.detected ? '✅' : '❌'}\n`;
+    text += `• Leveling: ${economy.features.leveling.detected ? `✅ (${economy.features.leveling.levelCount} livelli)` : '❌'}\n`;
+    text += `• Punteggio Sinergia: ${economy.synergyScore}/100\n\n`;
+    
+    if (economy.gaps.length > 0) {
+      text += `**🔍 Funzionalità Mancanti**\n`;
+      economy.gaps.forEach(gap => {
+        text += `• ${gap}\n`;
+      });
+      text += `\n`;
+    }
+  }
+  
+  const allRecs = [...scaling.recommendations];
+  if (economy?.recommendations) {
+    allRecs.push(...economy.recommendations);
+  }
+  
+  if (allRecs.length > 0) {
+    text += `**💡 Raccomandazioni**\n`;
+    const sorted = allRecs.sort((a, b) => {
+      const order = { critical: 0, high: 1, medium: 2, low: 3 };
+      return (order[a.priority] || 3) - (order[b.priority] || 3);
+    });
+    
+    sorted.slice(0, 5).forEach(rec => {
+      const icon = rec.priority === 'critical' ? '🚨' : rec.priority === 'high' ? '❗' : rec.priority === 'medium' ? '💡' : '📝';
+      text += `${icon} ${rec.text}\n`;
+    });
+  }
+  
+  return text;
+}

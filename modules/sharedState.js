@@ -11,7 +11,8 @@ const sharedState = {
   loginAttempts: new Map(),
   blockedIPs: new Map(),
   activeSessions: new Map(),
-  securityAlerts: []
+  securityAlerts: [],
+  growthData: new Map()
 };
 
 export function logSecurityEvent(event) {
@@ -210,6 +211,24 @@ export function removeScheduledTask(taskId) {
     return true;
   }
   return false;
+}
+
+export function setGrowthData(guildId, scaling, economy) {
+  sharedState.growthData.set(guildId, {
+    scaling,
+    economy,
+    updatedAt: Date.now()
+  });
+}
+
+export function getGrowthData(guildId) {
+  const data = sharedState.growthData.get(guildId);
+  if (!data) return null;
+  
+  if (Date.now() - data.updatedAt > 10 * 60 * 1000) {
+    return null;
+  }
+  return data;
 }
 
 export default sharedState;

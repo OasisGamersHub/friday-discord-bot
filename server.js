@@ -17,7 +17,8 @@ import {
   updateSessionActivity,
   getActiveSessions,
   getSecurityStats,
-  invalidateSession
+  invalidateSession,
+  getGrowthData
 } from './modules/sharedState.js';
 import {
   connectDB,
@@ -261,6 +262,7 @@ app.get('/', (req, res) => {
           
           <div class="tabs">
             <div class="tab active" data-tab="overview">📊 Overview</div>
+            <div class="tab" data-tab="growth">📈 Growth</div>
             <div class="tab" data-tab="actions">🚀 Azioni</div>
             <div class="tab" data-tab="security">🛡️ Sicurezza</div>
             <div class="tab" data-tab="activity">📋 Attivita</div>
@@ -315,6 +317,80 @@ app.get('/', (req, res) => {
             <div class="card">
               <h2>Ultimi Audit</h2>
               <div id="audit-list" class="activity-log">
+                <p style="color: #5a7a7a;">Caricamento...</p>
+              </div>
+            </div>
+          </div>
+          
+          <div id="growth" class="tab-content">
+            <div class="card">
+              <h2>🎯 Obiettivo 1000 Membri</h2>
+              <div style="margin: 20px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span id="growth-current">0</span>
+                  <span>1000</span>
+                </div>
+                <div style="background: #1a2e2e; border-radius: 10px; height: 24px; overflow: hidden;">
+                  <div id="growth-bar" style="background: linear-gradient(90deg, #2ecc71, #27ae60); height: 100%; transition: width 0.5s; width: 0%;"></div>
+                </div>
+                <p style="text-align: center; margin-top: 8px; color: #8fa8a8;" id="growth-progress">0% completato</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>📊 Punteggi</h2>
+              <div class="grid">
+                <div class="stat-box">
+                  <div class="value" id="scaling-score">-</div>
+                  <div class="label">Scaling Score</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="synergy-score">-</div>
+                  <div class="label">Sinergia MEE6</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="weekly-growth">-</div>
+                  <div class="label">Crescita Settimanale</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="channel-status">-</div>
+                  <div class="label">Stato Canali</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>💰 MEE6 Economy & Monetization</h2>
+              <div class="grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="stat-box">
+                  <div class="value" id="mee6-status">-</div>
+                  <div class="label">MEE6 Status</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="economy-status">-</div>
+                  <div class="label">Economy</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="achievements-status">-</div>
+                  <div class="label">Achievements</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="monetization-status">-</div>
+                  <div class="label">Monetizzazione</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>⚠️ Problemi Rilevati</h2>
+              <div id="growth-issues" class="activity-log">
+                <p style="color: #5a7a7a;">Caricamento...</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>💡 Raccomandazioni</h2>
+              <div id="growth-recommendations" class="activity-log">
                 <p style="color: #5a7a7a;">Caricamento...</p>
               </div>
             </div>
@@ -837,6 +913,57 @@ app.get('/', (req, res) => {
             }
           }
           
+          async function loadGrowth() {
+            try {
+              const res = await fetch('/api/growth');
+              const data = await res.json();
+              
+              if (data.scaling) {
+                document.getElementById('growth-current').textContent = data.scaling.memberCount || 0;
+                document.getElementById('growth-bar').style.width = data.scaling.progressToTarget + '%';
+                document.getElementById('growth-progress').textContent = data.scaling.progressToTarget + '% completato';
+                document.getElementById('scaling-score').textContent = data.scaling.score + '/100';
+                document.getElementById('scaling-score').style.color = data.scaling.score >= 80 ? '#2ecc71' : data.scaling.score >= 60 ? '#f1c40f' : '#e74c3c';
+                document.getElementById('weekly-growth').textContent = (data.scaling.engagement?.netGrowth >= 0 ? '+' : '') + (data.scaling.engagement?.netGrowth || 0);
+                document.getElementById('weekly-growth').style.color = (data.scaling.engagement?.netGrowth || 0) >= 0 ? '#2ecc71' : '#e74c3c';
+                document.getElementById('channel-status').textContent = data.scaling.channels?.status || 'optimal';
+                
+                const issuesContainer = document.getElementById('growth-issues');
+                if (data.scaling.issues && data.scaling.issues.length > 0) {
+                  issuesContainer.innerHTML = data.scaling.issues.map(issue => {
+                    const icon = issue.severity === 'high' ? '🔴' : issue.severity === 'medium' ? '🟡' : '🟢';
+                    return '<div class="activity-item"><div>' + icon + ' ' + issue.message + '</div></div>';
+                  }).join('');
+                } else {
+                  issuesContainer.innerHTML = '<p style="color: #2ecc71;">Nessun problema rilevato!</p>';
+                }
+                
+                const recsContainer = document.getElementById('growth-recommendations');
+                const allRecs = [...(data.scaling.recommendations || []), ...(data.economy?.recommendations || [])];
+                if (allRecs.length > 0) {
+                  recsContainer.innerHTML = allRecs.slice(0, 5).map(rec => {
+                    const icon = rec.priority === 'critical' ? '🚨' : rec.priority === 'high' ? '❗' : '💡';
+                    return '<div class="activity-item"><div>' + icon + ' ' + rec.text + '</div></div>';
+                  }).join('');
+                } else {
+                  recsContainer.innerHTML = '<p style="color: #5a7a7a;">Nessuna raccomandazione</p>';
+                }
+              }
+              
+              if (data.economy) {
+                document.getElementById('synergy-score').textContent = data.economy.synergyScore + '/100';
+                document.getElementById('mee6-status').textContent = data.economy.mee6Present ? (data.economy.mee6Premium ? 'Premium' : 'Attivo') : 'Assente';
+                document.getElementById('mee6-status').style.color = data.economy.mee6Present ? '#2ecc71' : '#e74c3c';
+                document.getElementById('economy-status').textContent = data.economy.features?.economy?.detected ? 'Attivo' : 'Non attivo';
+                document.getElementById('economy-status').style.color = data.economy.features?.economy?.detected ? '#2ecc71' : '#e74c3c';
+                document.getElementById('achievements-status').textContent = data.economy.features?.achievements?.detected ? 'Attivo' : 'Non attivo';
+                document.getElementById('achievements-status').style.color = data.economy.features?.achievements?.detected ? '#2ecc71' : '#e74c3c';
+                document.getElementById('monetization-status').textContent = data.economy.features?.monetization?.detected ? 'Attivo' : 'Non attivo';
+                document.getElementById('monetization-status').style.color = data.economy.features?.monetization?.detected ? '#2ecc71' : '#e74c3c';
+              }
+            } catch (e) { console.log('Growth error:', e); }
+          }
+          
           loadStatus();
           loadActivity();
           loadMetrics();
@@ -844,10 +971,12 @@ app.get('/', (req, res) => {
           loadAudits();
           loadSecurity();
           loadBackups();
+          loadGrowth();
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
           setInterval(loadSecurity, 30000);
+          setInterval(loadGrowth, 60000);
         </script>
       </body>
       </html>
@@ -986,6 +1115,109 @@ app.get('/api/backups', requireAuth, apiRateLimit, async (req, res) => {
   
   const backups = await getConfigBackups(guildId);
   res.json(backups);
+});
+
+app.get('/api/growth', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ scaling: null, economy: null });
+  }
+  
+  try {
+    const cachedGrowth = getGrowthData(guildId);
+    
+    if (cachedGrowth) {
+      return res.json({ 
+        scaling: cachedGrowth.scaling, 
+        economy: cachedGrowth.economy,
+        cached: true,
+        updatedAt: cachedGrowth.updatedAt
+      });
+    }
+    
+    const dailyMetrics = await getDailyMetrics(guildId, 30);
+    const guildStats = getGuildStats(guildId);
+    
+    const memberCount = guildStats?.memberCount || 0;
+    const channelCount = guildStats?.channelCount || 0;
+    const roleCount = guildStats?.roleCount || 0;
+    
+    let weeklyJoins = 0, weeklyLeaves = 0, weeklyMessages = 0;
+    if (dailyMetrics.length >= 7) {
+      const lastWeek = dailyMetrics.slice(-7);
+      weeklyMessages = lastWeek.reduce((sum, d) => sum + (d.messageCount || 0), 0);
+      weeklyJoins = lastWeek.reduce((sum, d) => sum + (d.joinCount || 0), 0);
+      weeklyLeaves = lastWeek.reduce((sum, d) => sum + (d.leaveCount || 0), 0);
+    }
+    
+    const netGrowth = weeklyJoins - weeklyLeaves;
+    const progressToTarget = Math.min((memberCount / 1000) * 100, 100).toFixed(1);
+    const channelsPerMember = memberCount > 0 ? (channelCount / memberCount).toFixed(3) : 0;
+    
+    let score = 100;
+    const issues = [];
+    const recommendations = [];
+    let channelStatus = 'optimal';
+    
+    if (parseFloat(channelsPerMember) > 0.3) {
+      channelStatus = 'over_scaled';
+      issues.push({ severity: 'medium', message: 'Troppi canali per il numero di membri' });
+      score -= 15;
+      recommendations.push({ priority: 'high', text: 'Unisci canali simili o poco utilizzati' });
+    } else if (parseFloat(channelsPerMember) < 0.05 && memberCount > 50) {
+      channelStatus = 'under_scaled';
+      issues.push({ severity: 'low', message: 'Pochi canali per il numero di membri' });
+      score -= 5;
+    }
+    
+    if (netGrowth < 0) {
+      issues.push({ severity: 'high', message: 'Crescita negativa questa settimana: ' + netGrowth + ' membri' });
+      score -= 20;
+      recommendations.push({ priority: 'critical', text: 'Implementa strategie di retention' });
+    }
+    
+    if (memberCount < 100) {
+      recommendations.push({ priority: 'high', text: 'Fase iniziale: focus su contenuti di qualita e inviti personali' });
+    } else if (memberCount < 500) {
+      recommendations.push({ priority: 'high', text: 'Fase crescita: attiva partnership ed eventi cross-server' });
+    } else if (memberCount < 1000) {
+      recommendations.push({ priority: 'high', text: 'Quasi al traguardo! Focus su community features' });
+    }
+    
+    score = Math.max(0, Math.min(100, score));
+    
+    const scaling = {
+      memberCount,
+      progressToTarget,
+      score,
+      channels: { total: channelCount, status: channelStatus },
+      roles: { total: roleCount },
+      engagement: { weeklyMessages, weeklyJoins, weeklyLeaves, netGrowth },
+      issues,
+      recommendations
+    };
+    
+    const economy = {
+      mee6Present: false,
+      mee6Premium: false,
+      synergyScore: 0,
+      features: {
+        economy: { detected: false },
+        achievements: { detected: false },
+        monetization: { detected: false },
+        leveling: { detected: false, levelCount: 0 }
+      },
+      recommendations: [
+        { priority: 'low', text: 'Esegui !scalecheck su Discord per analisi completa MEE6' }
+      ],
+      note: 'Esegui !scalecheck su Discord per dati MEE6 aggiornati'
+    };
+    
+    res.json({ scaling, economy, cached: false });
+  } catch (error) {
+    console.error('Growth API error:', error);
+    res.json({ scaling: null, economy: null, error: error.message });
+  }
 });
 
 app.get('/api/security', requireAuth, apiRateLimit, (req, res) => {

@@ -38,7 +38,8 @@ export function checkRateLimit(guildId, command) {
     'mee6': RATE_LIMIT_MEE6,
     'security': RATE_LIMIT_MEE6,
     'schema': RATE_LIMIT_MEE6,
-    'testi': RATE_LIMIT_TESTI
+    'testi': RATE_LIMIT_TESTI,
+    'scalecheck': RATE_LIMIT_MEE6
   };
   
   const limit = limits[command] || 60000;

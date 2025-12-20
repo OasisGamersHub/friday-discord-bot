@@ -10,7 +10,10 @@ import {
   findExistingAgeRoles,
   checkMEE6Compatibility,
   generateTextSuggestions,
-  formatTextSuggestions
+  formatTextSuggestions,
+  analyzeServerScaling,
+  checkMEE6Economy,
+  formatScalingReport
 } from './modules/serverAnalyzer.js';
 import { 
   connectDB, 
@@ -39,7 +42,8 @@ import {
   updateGuildStats,
   addActivityLog,
   setAntiRaidStatus,
-  getAntiRaidStatus
+  getAntiRaidStatus,
+  setGrowthData
 } from './modules/sharedState.js';
 
 const client = new Client({
@@ -904,6 +908,47 @@ client.on('messageCreate', async (message) => {
     }
   }
 
+  if (command === 'scalecheck') {
+    if (!isOwner) {
+      return message.reply('❌ Solo il proprietario del server può usare questo comando.');
+    }
+    
+    const rateCheck = checkRateLimit(message.guild.id, 'scalecheck');
+    if (!rateCheck.allowed) {
+      return message.reply(`⏱️ Comando in cooldown. Riprova tra ${rateCheck.remaining} secondi.`);
+    }
+    
+    const loadingMsg = await message.reply('📊 Analizzando scaling e monetizzazione... (10-15 secondi)');
+    
+    try {
+      const dailyMetrics = await getDailyMetrics(message.guild.id, 30);
+      const scaling = await analyzeServerScaling(message.guild, dailyMetrics);
+      const economy = await checkMEE6Economy(message.guild);
+      const formattedReport = formatScalingReport(scaling, economy);
+      
+      if (formattedReport.length > 2000) {
+        const parts = formattedReport.match(/[\s\S]{1,1900}/g) || [formattedReport];
+        await loadingMsg.edit(parts[0]);
+        for (let i = 1; i < parts.length; i++) {
+          await message.channel.send(parts[i]);
+        }
+      } else {
+        await loadingMsg.edit(formattedReport);
+      }
+      
+      setGrowthData(message.guild.id, scaling, economy);
+      
+      addActivityLog({
+        type: 'scalecheck',
+        guildId: message.guild.id,
+        message: `Analisi scaling completata - Score: ${scaling.score}/100, Sinergia MEE6: ${economy.synergyScore}/100`
+      });
+    } catch (error) {
+      console.error('Scalecheck error:', error);
+      await loadingMsg.edit('❌ Errore durante l\'analisi dello scaling.');
+    }
+  }
+
   if (command === 'help') {
     const embed = new EmbedBuilder()
       .setTitle('📋 Comandi Disponibili')
@@ -918,6 +963,7 @@ client.on('messageCreate', async (message) => {
         { name: '!schema', value: 'Mappa struttura server', inline: true },
         { name: '!trend', value: 'Andamento e crescita', inline: true },
         { name: '!mee6', value: 'Check compatibilità MEE6', inline: true },
+        { name: '!scalecheck', value: 'Analisi scaling + economia', inline: true },
         { name: '!backup', value: 'Backup configurazione', inline: true },
         { name: '!testi', value: 'Suggerimenti testo AI', inline: true },
         { name: '!fix <azione>', value: 'Applica correzioni', inline: true }

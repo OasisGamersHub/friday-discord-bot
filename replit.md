@@ -10,6 +10,14 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-20**: Sistema Scaling & Economy Analysis
+  - Nuovo comando `!scalecheck` per analisi completa scaling server e MEE6 economy
+  - Dashboard pannello "Growth" con progresso obiettivo 1000 membri
+  - Analisi saturazione canali, ruoli orfani, bilanciamento staff
+  - Rilevamento MEE6 economy, achievements, monetization
+  - Trend settimanali (join, leave, messaggi) con raccomandazioni prioritizzate
+  - Funzioni `analyzeServerScaling()`, `checkMEE6Economy()`, `formatScalingReport()`
+  - API endpoint `/api/growth` per dati live nella dashboard
 - **2024-12-20**: Generazione testi AI
   - Nuovo comando `!testi` per suggerimenti testo personalizzati
   - Genera messaggi benvenuto, regole, descrizioni canali pronti all'uso
@@ -91,6 +99,7 @@ Preferred communication style: Simple, everyday language (Italian)
   - `!fix <azione>` - Applica correzioni automatiche (riusa ruoli esistenti)
   - `!backup` - Crea backup configurazione server (ruoli, canali, permessi)
   - `!testi` - Genera suggerimenti testo AI (benvenuto, regole, descrizioni)
+  - `!scalecheck` - Analisi scaling server + MEE6 economy/monetization
   - `!help` - Lista comandi
 - Tracciamento statistiche in-memory e su MongoDB (join, messaggi, attività canali)
 - Sistema di snapshot per tracciare evoluzione struttura nel tempo
