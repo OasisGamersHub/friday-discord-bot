@@ -2080,10 +2080,16 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
+          setInterval(loadMetrics, 60000);
+          setInterval(loadExtraCharts, 120000);
+          setInterval(loadAudits, 120000);
           setInterval(loadSecurity, 30000);
+          setInterval(loadBackups, 300000);
           setInterval(loadGrowth, 60000);
           setInterval(loadStructure, 120000);
           setInterval(loadEcosystem, 120000);
+          setInterval(loadShopItems, 120000);
+          setInterval(loadFinancial, 120000);
           
           async function loadStructure() {
             try {
