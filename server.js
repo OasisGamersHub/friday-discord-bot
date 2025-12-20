@@ -554,6 +554,7 @@ app.get('/', (req, res) => {
             <div class="tab active" data-tab="overview">📊 Overview</div>
             <div class="tab" data-tab="growth">📈 Growth</div>
             <div class="tab" data-tab="structure">🏗️ Structure</div>
+            <div class="tab" data-tab="ecosystem">🔄 Ecosystem</div>
             <div class="tab" data-tab="actions">🚀 Azioni</div>
             <div class="tab" data-tab="security">🛡️ Sicurezza</div>
             <div class="tab" data-tab="activity">📋 Attivita</div>
@@ -1058,6 +1059,260 @@ app.get('/', (req, res) => {
             </div>
           </div>
           
+          <div id="ecosystem" class="tab-content">
+            <div class="card" style="border-left: 3px solid var(--accent-gold);">
+              <h2>🔄 Ecosystem di Crescita</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Cos'e:</strong> Visualizzazione di come i moduli del server lavorano insieme per far crescere la community. Ogni elemento alimenta gli altri creando un ciclo virtuoso.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                <strong>Perche serve:</strong> Capire le connessioni ti aiuta a decidere quali funzionalita attivare e come ottimizzare l'engagement. Un ecosistema bilanciato accelera la crescita organica.
+              </p>
+            </div>
+            
+            <div class="card">
+              <h2>🌐 Mappa Sinergie</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 20px;">Passa il mouse su ogni modulo per vedere come interagisce con gli altri. I colori indicano lo stato: verde = attivo, giallo = parziale, grigio = non attivo.</p>
+              
+              <div style="display: flex; justify-content: center; padding: 20px 0;">
+                <svg viewBox="0 0 500 400" style="max-width: 600px; width: 100%;">
+                  <defs>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  
+                  <line x1="250" y1="200" x2="250" y2="60" stroke="#4FD1C5" stroke-width="2" opacity="0.6"/>
+                  <line x1="250" y1="200" x2="400" y2="120" stroke="#4FD1C5" stroke-width="2" opacity="0.6"/>
+                  <line x1="250" y1="200" x2="420" y2="280" stroke="#4FD1C5" stroke-width="2" opacity="0.6"/>
+                  <line x1="250" y1="200" x2="250" y2="360" stroke="#4FD1C5" stroke-width="2" opacity="0.6"/>
+                  <line x1="250" y1="200" x2="80" y2="280" stroke="#4FD1C5" stroke-width="2" opacity="0.6"/>
+                  <line x1="250" y1="200" x2="100" y2="120" stroke="#4FD1C5" stroke-width="2" opacity="0.6"/>
+                  
+                  <path d="M250,60 Q325,90 400,120" stroke="#D4A373" stroke-width="1" fill="none" opacity="0.4" stroke-dasharray="4"/>
+                  <path d="M400,120 Q410,200 420,280" stroke="#D4A373" stroke-width="1" fill="none" opacity="0.4" stroke-dasharray="4"/>
+                  <path d="M420,280 Q335,320 250,360" stroke="#D4A373" stroke-width="1" fill="none" opacity="0.4" stroke-dasharray="4"/>
+                  <path d="M250,360 Q165,320 80,280" stroke="#D4A373" stroke-width="1" fill="none" opacity="0.4" stroke-dasharray="4"/>
+                  <path d="M80,280 Q90,200 100,120" stroke="#D4A373" stroke-width="1" fill="none" opacity="0.4" stroke-dasharray="4"/>
+                  <path d="M100,120 Q175,90 250,60" stroke="#D4A373" stroke-width="1" fill="none" opacity="0.4" stroke-dasharray="4"/>
+                  
+                  <g class="eco-node" style="cursor: pointer;" id="node-hub">
+                    <circle cx="250" cy="200" r="45" fill="#0a0a0a" stroke="#D4A373" stroke-width="3" filter="url(#glow)"/>
+                    <text x="250" y="195" text-anchor="middle" fill="#D4A373" font-size="11" font-weight="600">STREAMBRIDGE</text>
+                    <text x="250" y="210" text-anchor="middle" fill="#D4A373" font-size="10">PRO</text>
+                  </g>
+                  
+                  <g class="eco-node" style="cursor: pointer;" id="node-levels">
+                    <circle cx="250" cy="60" r="32" fill="#0a0a0a" stroke="#4FD1C5" stroke-width="2"/>
+                    <text x="250" y="55" text-anchor="middle" fill="#4FD1C5" font-size="16">📊</text>
+                    <text x="250" y="72" text-anchor="middle" fill="#e0e0e0" font-size="9" font-weight="500">LEVELS</text>
+                  </g>
+                  
+                  <g class="eco-node" style="cursor: pointer;" id="node-achievements">
+                    <circle cx="400" cy="120" r="32" fill="#0a0a0a" stroke="#4FD1C5" stroke-width="2"/>
+                    <text x="400" y="115" text-anchor="middle" fill="#4FD1C5" font-size="16">🏆</text>
+                    <text x="400" y="132" text-anchor="middle" fill="#e0e0e0" font-size="8" font-weight="500">ACHIEVEMENTS</text>
+                  </g>
+                  
+                  <g class="eco-node" style="cursor: pointer;" id="node-boosts">
+                    <circle cx="420" cy="280" r="32" fill="#0a0a0a" stroke="#4FD1C5" stroke-width="2"/>
+                    <text x="420" y="275" text-anchor="middle" fill="#4FD1C5" font-size="16">⚡</text>
+                    <text x="420" y="292" text-anchor="middle" fill="#e0e0e0" font-size="9" font-weight="500">BOOSTS</text>
+                  </g>
+                  
+                  <g class="eco-node" style="cursor: pointer;" id="node-monetization">
+                    <circle cx="250" cy="360" r="32" fill="#0a0a0a" stroke="#4FD1C5" stroke-width="2"/>
+                    <text x="250" y="355" text-anchor="middle" fill="#4FD1C5" font-size="16">💰</text>
+                    <text x="250" y="372" text-anchor="middle" fill="#e0e0e0" font-size="8" font-weight="500">MONETIZATION</text>
+                  </g>
+                  
+                  <g class="eco-node" style="cursor: pointer;" id="node-economy">
+                    <circle cx="80" cy="280" r="32" fill="#0a0a0a" stroke="#4FD1C5" stroke-width="2"/>
+                    <text x="80" y="275" text-anchor="middle" fill="#4FD1C5" font-size="16">🪙</text>
+                    <text x="80" y="292" text-anchor="middle" fill="#e0e0e0" font-size="9" font-weight="500">ECONOMY</text>
+                  </g>
+                  
+                  <g class="eco-node" style="cursor: pointer;" id="node-growth">
+                    <circle cx="100" cy="120" r="32" fill="#0a0a0a" stroke="#2ecc71" stroke-width="2"/>
+                    <text x="100" y="115" text-anchor="middle" fill="#2ecc71" font-size="16">🚀</text>
+                    <text x="100" y="132" text-anchor="middle" fill="#e0e0e0" font-size="9" font-weight="500">GROWTH</text>
+                  </g>
+                  
+                  <text x="250" y="395" text-anchor="middle" fill="#666" font-size="10">Hub Centrale → Moduli Satellite → Crescita Server</text>
+                </svg>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>📖 Spiegazione Moduli</h2>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px;">
+                
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <span style="font-size: 1.5rem;">🎛️</span>
+                    <div>
+                      <div style="font-weight: 600; color: #D4A373;">Streambridge Pro</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">Hub Centrale</div>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    <strong>Cosa fa:</strong> Coordina tutti i moduli e raccoglie dati per ottimizzare le strategie di crescita.<br>
+                    <strong>Sinergia:</strong> Alimenta ogni altro modulo con insights e automazioni intelligenti.
+                  </p>
+                </div>
+                
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <span style="font-size: 1.5rem;">📊</span>
+                    <div>
+                      <div style="font-weight: 600; color: #4FD1C5;">Levels</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">Sistema Progressione</div>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    <strong>Cosa fa:</strong> I membri guadagnano XP partecipando. Piu attivita = livelli piu alti.<br>
+                    <strong>Sinergia:</strong> Sblocca Achievements → Guadagna Economy → Acquista Boosts.
+                  </p>
+                </div>
+                
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <span style="font-size: 1.5rem;">🏆</span>
+                    <div>
+                      <div style="font-weight: 600; color: #4FD1C5;">Achievements</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">Obiettivi e Badge</div>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    <strong>Cosa fa:</strong> Obiettivi sbloccabili che premiano comportamenti positivi e milestone.<br>
+                    <strong>Sinergia:</strong> Motivano a salire di Levels → Premiano con Economy → Mostrano status.
+                  </p>
+                </div>
+                
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <span style="font-size: 1.5rem;">⚡</span>
+                    <div>
+                      <div style="font-weight: 600; color: #4FD1C5;">Boosts</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">Acceleratori</div>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    <strong>Cosa fa:</strong> Moltiplicatori XP, accesso anticipato, vantaggi esclusivi per membri attivi.<br>
+                    <strong>Sinergia:</strong> Acquistabili con Economy → Accelerano Levels → Sbloccano Achievements.
+                  </p>
+                </div>
+                
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <span style="font-size: 1.5rem;">🪙</span>
+                    <div>
+                      <div style="font-weight: 600; color: #4FD1C5;">Economy</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">Valuta Virtuale</div>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    <strong>Cosa fa:</strong> Moneta del server guadagnata con attivita. Spendibile per ruoli, boost, items.<br>
+                    <strong>Sinergia:</strong> Guadagnata da Levels → Spesa per Boosts → Alimenta Monetization.
+                  </p>
+                </div>
+                
+                <div class="stat-box" style="text-align: left; padding: 16px;">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <span style="font-size: 1.5rem;">💰</span>
+                    <div>
+                      <div style="font-weight: 600; color: #4FD1C5;">Monetization</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">Revenue Stream</div>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                    <strong>Cosa fa:</strong> Ruoli premium, abbonamenti, contenuti esclusivi per sostenere il server.<br>
+                    <strong>Sinergia:</strong> Finanzia nuovi contenuti → Migliora tutti i moduli → Attira nuovi membri.
+                  </p>
+                </div>
+                
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>⚡ Stato Attuale Moduli</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Verifica quali moduli sono attivi nel tuo server. I dati provengono dall'analisi Structure360 e Scalecheck.</p>
+              <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                <div class="stat-box">
+                  <div class="value" style="font-size: 1.5rem;" id="eco-levels">-</div>
+                  <div class="label">Levels</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;" id="eco-levels-source">-</p>
+                </div>
+                <div class="stat-box">
+                  <div class="value" style="font-size: 1.5rem;" id="eco-achievements">-</div>
+                  <div class="label">Achievements</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;" id="eco-achievements-source">-</p>
+                </div>
+                <div class="stat-box">
+                  <div class="value" style="font-size: 1.5rem;" id="eco-boosts">-</div>
+                  <div class="label">Boosts</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;" id="eco-boosts-source">-</p>
+                </div>
+                <div class="stat-box">
+                  <div class="value" style="font-size: 1.5rem;" id="eco-economy">-</div>
+                  <div class="label">Economy</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;" id="eco-economy-source">-</p>
+                </div>
+                <div class="stat-box">
+                  <div class="value" style="font-size: 1.5rem;" id="eco-monetization">-</div>
+                  <div class="label">Monetization</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;" id="eco-monetization-source">-</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>🎯 Come Attivare l'Ecosistema</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Segui questi step per costruire un ecosistema di crescita completo:</p>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--bg-elevated); border-radius: 8px;">
+                  <span style="background: var(--primary); color: #000; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">1</span>
+                  <div>
+                    <strong style="color: var(--text-primary);">Attiva Levels</strong>
+                    <p style="color: var(--text-secondary); margin: 4px 0 0; font-size: 0.85rem;">Configura MEE6 o un bot leveling. I membri inizieranno a guadagnare XP partecipando.</p>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--bg-elevated); border-radius: 8px;">
+                  <span style="background: var(--primary); color: #000; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">2</span>
+                  <div>
+                    <strong style="color: var(--text-primary);">Aggiungi Economy</strong>
+                    <p style="color: var(--text-secondary); margin: 4px 0 0; font-size: 0.85rem;">Abilita la valuta virtuale. I membri guadagnano coins con messaggi e attivita.</p>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--bg-elevated); border-radius: 8px;">
+                  <span style="background: var(--primary); color: #000; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">3</span>
+                  <div>
+                    <strong style="color: var(--text-primary);">Crea Achievements</strong>
+                    <p style="color: var(--text-secondary); margin: 4px 0 0; font-size: 0.85rem;">Definisci obiettivi e badge. Premia milestone come "100 messaggi" o "Primo evento".</p>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--bg-elevated); border-radius: 8px;">
+                  <span style="background: var(--primary); color: #000; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">4</span>
+                  <div>
+                    <strong style="color: var(--text-primary);">Offri Boosts</strong>
+                    <p style="color: var(--text-secondary); margin: 4px 0 0; font-size: 0.85rem;">Permetti ai membri di spendere coins per XP multiplier, ruoli speciali, accesso anticipato.</p>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--bg-elevated); border-radius: 8px;">
+                  <span style="background: #D4A373; color: #000; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0;">5</span>
+                  <div>
+                    <strong style="color: var(--text-primary);">Monetizza (Opzionale)</strong>
+                    <p style="color: var(--text-secondary); margin: 4px 0 0; font-size: 0.85rem;">Ruoli premium, server boost perks, contenuti esclusivi. Reinvesti nel server.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="footer">
             <p>Friday Bot per <strong>Oasis Gamers Hub</strong> | Sviluppato con ❤️</p>
           </div>
@@ -1443,12 +1698,14 @@ app.get('/', (req, res) => {
           loadBackups();
           loadGrowth();
           loadStructure();
+          loadEcosystem();
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
           setInterval(loadSecurity, 30000);
           setInterval(loadGrowth, 60000);
           setInterval(loadStructure, 120000);
+          setInterval(loadEcosystem, 120000);
           
           async function loadStructure() {
             try {
@@ -1507,6 +1764,55 @@ app.get('/', (req, res) => {
                 }
               }
             } catch (e) { console.log('Structure error:', e); }
+          }
+          
+          async function loadEcosystem() {
+            try {
+              const [growthRes, structureRes] = await Promise.all([
+                fetch('/api/growth'),
+                fetch('/api/structure')
+              ]);
+              const growthData = await growthRes.json();
+              const structureData = await structureRes.json();
+              
+              const mee6Features = structureData.analysis?.mee6Integration?.managedFeatures || [];
+              const hasMee6 = structureData.analysis?.mee6Integration?.detected || false;
+              
+              const updateModule = (id, active, source) => {
+                const el = document.getElementById(id);
+                const srcEl = document.getElementById(id + '-source');
+                if (el) {
+                  el.textContent = active ? '✅' : '⚪';
+                  el.style.color = active ? '#2ecc71' : '#666';
+                }
+                if (srcEl) srcEl.textContent = source;
+              };
+              
+              const hasLevels = mee6Features.some(f => f.toLowerCase().includes('level') || f.toLowerCase().includes('xp'));
+              updateModule('eco-levels', hasLevels || hasMee6, hasLevels ? 'via MEE6' : (hasMee6 ? 'MEE6 presente' : 'Non attivo'));
+              
+              const hasAchievements = mee6Features.some(f => f.toLowerCase().includes('achievement') || f.toLowerCase().includes('badge'));
+              updateModule('eco-achievements', hasAchievements, hasAchievements ? 'via MEE6' : 'Non attivo');
+              
+              const hasEconomy = growthData.economy?.hasEconomy || mee6Features.some(f => f.toLowerCase().includes('economy') || f.toLowerCase().includes('coin'));
+              updateModule('eco-economy', hasEconomy, hasEconomy ? 'via MEE6' : 'Non attivo');
+              
+              const hasBoosts = mee6Features.some(f => f.toLowerCase().includes('boost') || f.toLowerCase().includes('multiplier'));
+              updateModule('eco-boosts', hasBoosts, hasBoosts ? 'via MEE6' : 'Non attivo');
+              
+              const hasMonetization = growthData.economy?.hasMonetization || mee6Features.some(f => f.toLowerCase().includes('premium') || f.toLowerCase().includes('monetiz'));
+              updateModule('eco-monetization', hasMonetization, hasMonetization ? 'Attivo' : 'Non attivo');
+              
+              const nodes = ['levels', 'achievements', 'boosts', 'economy', 'monetization'];
+              const states = [hasLevels || hasMee6, hasAchievements, hasBoosts, hasEconomy, hasMonetization];
+              nodes.forEach((node, i) => {
+                const circle = document.querySelector('#node-' + node + ' circle');
+                if (circle) {
+                  circle.setAttribute('stroke', states[i] ? '#2ecc71' : '#666');
+                }
+              });
+              
+            } catch (e) { console.log('Ecosystem error:', e); }
           }
         </script>
       </body>
