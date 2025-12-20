@@ -1628,6 +1628,12 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
               <div id="strategy-services" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;"></div>
             </div>
             
+            <div class="card" id="strategy-ambassadors-card" style="display: none;">
+              <h2>🎯 Community Ambassadors</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Campagne per far fare marketing gratuito agli utenti premiandoli.</p>
+              <div id="strategy-ambassadors" style="display: grid; gap: 16px;"></div>
+            </div>
+            
             <div class="card" id="strategy-kpi-card" style="display: none;">
               <h2>📈 Obiettivi Prossimo Mese</h2>
               <div id="strategy-kpi" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;"></div>
@@ -2390,6 +2396,11 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
                 if (r.recommendedServices && r.recommendedServices.length > 0) {
                   document.getElementById('strategy-services-card').style.display = 'block';
                   document.getElementById('strategy-services').innerHTML = r.recommendedServices.map(s => '<div class="stat-box" style="text-align: left; padding: 16px;"><div style="font-weight: 600; color: var(--secondary); margin-bottom: 8px;">' + s.name + '</div><p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 8px 0;">' + s.purpose + '</p><div style="font-size: 0.75rem; color: ' + (s.cost === 'Gratuito' ? '#22C55E' : '#EAB308') + ';">' + s.cost + '</div>' + (s.link ? '<a href="' + s.link + '" target="_blank" style="font-size: 0.75rem; color: var(--primary);">Vai al sito</a>' : '') + '</div>').join('');
+                }
+                
+                if (r.communityAmbassadors && r.communityAmbassadors.length > 0) {
+                  document.getElementById('strategy-ambassadors-card').style.display = 'block';
+                  document.getElementById('strategy-ambassadors').innerHTML = r.communityAmbassadors.map(c => '<div class="activity-item" style="border-left: 3px solid var(--secondary); padding-left: 16px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><strong style="color: var(--secondary);">🎯 ' + c.campaign + '</strong><span style="font-size: 0.75rem; color: var(--text-muted);">' + (c.estimatedParticipation || '') + '</span></div><div style="margin-bottom: 8px;"><span style="font-size: 0.8rem; color: var(--text-muted);">Azione:</span><p style="margin: 4px 0; color: var(--text-secondary);">' + c.action + '</p></div><div style="margin-bottom: 8px;"><span style="font-size: 0.8rem; color: var(--text-muted);">Premio:</span><p style="margin: 4px 0; color: #22C55E; font-weight: 500;">🎁 ' + c.reward + '</p></div><div><span style="font-size: 0.8rem; color: var(--text-muted);">Regole:</span><p style="margin: 4px 0; font-size: 0.85rem; color: var(--text-secondary);">' + c.rules + '</p></div></div>').join('');
                 }
                 
                 if (r.kpiTargets) {

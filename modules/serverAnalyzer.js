@@ -949,6 +949,15 @@ Genera un report strategico completo in JSON con questa struttura:
       "link": "URL se disponibile"
     }
   ],
+  "communityAmbassadors": [
+    {
+      "campaign": "Nome campagna (es. Share & Win, Content Creator, Refer-a-Friend)",
+      "action": "Cosa deve fare l'utente per partecipare",
+      "reward": "Premio offerto (ruoli speciali, coins MEE6, shoutout, accesso VIP, etc)",
+      "rules": "Regole semplici per partecipare",
+      "estimatedParticipation": "Quanti utenti potrebbero partecipare"
+    }
+  ],
   "kpiTargets": {
     "memberGrowth": "Obiettivo membri prossimo mese",
     "engagement": "Obiettivo engagement (messaggi/giorno)",
@@ -961,7 +970,8 @@ IMPORTANTE:
 - Fornisci 3-5 azioni prioritarie concrete e realizzabili
 - Suggerisci solo servizi/piattaforme gratuite o freemium per mantenere costi zero
 - Le strategie devono essere specifiche per community gaming italiana
-- Includi almeno un suggerimento per eventi/attivita da organizzare`;
+- Includi almeno un suggerimento per eventi/attivita da organizzare
+- CRITICO: Includi 2-4 campagne "Community Ambassadors" per far fare marketing gratuito agli utenti premiandoli con ruoli, coins MEE6, o riconoscimenti (es: contest di inviti, condivisioni social, creazione clip/meme)`;
 
   try {
     const response = await openai.chat.completions.create({

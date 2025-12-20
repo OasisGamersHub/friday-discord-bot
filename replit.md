@@ -45,6 +45,15 @@ The system consists of a Discord bot built with `discord.js v14` and a web dashb
     -   **MEE6 Shop Analyzer:** Copy-paste parser (block-based, blank-line delimited) to import shop items from MEE6 dashboard exports. Zero API cost approach.
     -   **Actionable Suggestions Engine:** Rule-based analysis (without AI) providing optimization tips: price gap analysis, item type variety, expensive item warnings, shop size recommendations.
     -   **Shop Items Database:** MongoDB collections for persisting shop items, service costs, and economy analysis data.
+-   **Strategy Intelligence:** Monthly AI-powered growth reports with:
+    -   **Executive Summary:** 2-3 sentence overview with health score (0-100) and trend indicator (growing/stable/declining)
+    -   **Priority Actions:** 3-5 concrete actions with priority levels (high/medium/low), estimated impact, and timeframes
+    -   **Advertising Opportunities:** Free/low-budget promotion platforms and strategies specific to Italian gaming community
+    -   **Community Ambassadors:** Campaigns to incentivize users to do free marketing (contests, invites, social shares) with rewards like MEE6 coins, special roles, VIP access
+    -   **Recommended Services:** Free/freemium tools and bots to enhance server
+    -   **KPI Targets:** Monthly objectives for member growth, engagement, and retention
+    -   **7-day Cooldown:** Prevents excessive AI calls, keeps cost at ~$0.01-0.05/month
+    -   **Historical View:** Last 6 reports for progress tracking
 
 ### System Design Choices
 
