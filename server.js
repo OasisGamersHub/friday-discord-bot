@@ -609,6 +609,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>Ultimi Audit</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Storico delle analisi eseguite. Ogni audit controlla sicurezza, struttura e ottimizzazioni del server.</p>
               <div id="audit-list" class="activity-log">
                 <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
@@ -680,6 +681,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>⚠️ Problemi Rilevati</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Criticita identificate nel server. I problemi sono ordinati per gravita (rosso = critico, giallo = medio, verde = minore).</p>
               <div id="growth-issues" class="activity-log">
                 <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
@@ -687,6 +689,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>💡 Raccomandazioni</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Suggerimenti pratici per migliorare il server. Segui le priorita per ottenere i migliori risultati.</p>
               <div id="growth-recommendations" class="activity-log">
                 <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
@@ -761,6 +764,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>📦 Backup Salvati</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Copie di sicurezza della configurazione server (ruoli, canali, permessi). Massimo 10 backup conservati.</p>
               <div id="backup-list" class="activity-log">
                 <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
@@ -836,6 +840,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>Log Sicurezza</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Cronologia di tutti gli eventi di sicurezza: accessi, tentativi bloccati, modifiche configurazione.</p>
               <div id="security-log" class="activity-log">
                 <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
@@ -845,6 +850,7 @@ app.get('/', (req, res) => {
           <div id="activity" class="tab-content">
             <div class="card">
               <h2>Log Attivita</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Registro di tutte le azioni eseguite dal bot e dalla dashboard. Utile per tracciare chi ha fatto cosa e quando.</p>
               <div id="activity-log" class="activity-log">
                 <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
@@ -854,6 +860,7 @@ app.get('/', (req, res) => {
           <div id="commands" class="tab-content">
             <div class="card">
               <h2>Comandi Bot</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Tutti i comandi disponibili su Discord. Digita il comando nel canale del server per eseguirlo. Solo il proprietario puo usare i comandi avanzati.</p>
               <div class="command-list">
                 <div class="command-item"><code>!audit</code><span>Analisi completa con AI (3 fasi graduali)</span></div>
                 <div class="command-item"><code>!security</code><span>Report sicurezza e permessi</span></div>
@@ -872,6 +879,7 @@ app.get('/', (req, res) => {
           <div id="features" class="tab-content">
             <div class="card">
               <h2>Funzionalita Esclusive</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Tutte le funzionalita di Friday Bot. Queste caratteristiche lavorano in sinergia con MEE6 senza conflitti.</p>
               <div class="features" style="margin-top: 16px;">
                 <div class="feature-card">
                   <div class="icon">🔍</div>
