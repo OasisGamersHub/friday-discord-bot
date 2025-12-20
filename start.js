@@ -1,15 +1,14 @@
-import { spawn } from 'child_process';
-
 console.log('Avvio servizi...');
 
-const bot = spawn('node', ['index.js'], { stdio: 'inherit' });
-const server = spawn('node', ['server.js'], { stdio: 'inherit' });
-
-bot.on('error', (err) => console.error('Errore bot:', err));
-server.on('error', (err) => console.error('Errore server:', err));
+import('./server.js').catch(err => console.error('Errore server:', err));
+import('./index.js').catch(err => console.error('Errore bot:', err));
 
 process.on('SIGTERM', () => {
-  bot.kill();
-  server.kill();
+  console.log('Ricevuto SIGTERM, chiusura...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('Ricevuto SIGINT, chiusura...');
   process.exit(0);
 });
