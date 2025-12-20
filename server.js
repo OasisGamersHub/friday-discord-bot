@@ -7,6 +7,7 @@ import {
   getGuildStats,
   getAllGuildsStats,
   getActivityLog,
+  addActivityLog,
   getAntiRaidStatus,
   logSecurityEvent,
   getSecurityLog,
