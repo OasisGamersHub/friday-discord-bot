@@ -894,6 +894,33 @@ const SCALING_THRESHOLDS = {
   channelsPerMember: { min: 0.05, max: 0.3 }
 };
 
+// Soglie dinamiche per fase di crescita
+const GROWTH_PHASES = [
+  { maxMembers: 50, name: 'Avvio', channels: { min: 5, max: 20, optimal: 15 } },
+  { maxMembers: 100, name: 'Base', channels: { min: 15, max: 30, optimal: 25 } },
+  { maxMembers: 500, name: 'Crescita', channels: { min: 25, max: 60, optimal: 45 } },
+  { maxMembers: 1000, name: 'Maturità', channels: { min: 50, max: 100, optimal: 80 } },
+  { maxMembers: Infinity, name: 'Scalato', channels: { min: 80, max: 200, optimal: 120 } }
+];
+
+function getGrowthPhase(memberCount) {
+  return GROWTH_PHASES.find(phase => memberCount <= phase.maxMembers) || GROWTH_PHASES[GROWTH_PHASES.length - 1];
+}
+
+function getChannelStatus(channelCount, memberCount) {
+  const phase = getGrowthPhase(memberCount);
+  
+  if (channelCount < phase.channels.min) {
+    return { status: 'under_scaled', phase: phase.name, recommended: phase.channels.optimal };
+  } else if (channelCount > phase.channels.max) {
+    return { status: 'over_scaled', phase: phase.name, recommended: phase.channels.optimal };
+  } else if (channelCount >= phase.channels.optimal - 5 && channelCount <= phase.channels.optimal + 10) {
+    return { status: 'optimal', phase: phase.name, recommended: phase.channels.optimal };
+  } else {
+    return { status: 'good', phase: phase.name, recommended: phase.channels.optimal };
+  }
+}
+
 const MEE6_ECONOMY_PATTERNS = {
   currency: ['coin', 'moneta', 'soldi', 'gold', 'token', 'crediti', 'punti', 'gems', 'diamanti', 'stelline', 'currency', 'valuta', 'denaro'],
   shop: ['shop', 'negozio', 'store', 'acquista', 'compra', 'mercato', 'economia', 'economy'],
@@ -992,31 +1019,35 @@ export async function analyzeServerScaling(guild, dailyMetrics = []) {
     });
   }
   
-  if (channelsPerMember > SCALING_THRESHOLDS.channelsPerMember.max) {
-    scaling.channels.status = 'over_scaled';
+  // Usa soglie dinamiche basate sulla fase di crescita
+  const channelAnalysis = getChannelStatus(scaling.channels.total, memberCount);
+  scaling.channels.status = channelAnalysis.status;
+  scaling.channels.phase = channelAnalysis.phase;
+  scaling.channels.recommended = channelAnalysis.recommended;
+  
+  if (channelAnalysis.status === 'over_scaled') {
     scaling.issues.push({
       type: 'too_many_channels',
-      severity: 'medium',
-      message: `Troppi canali per il numero di membri (${scaling.channels.total} canali per ${memberCount} membri)`
+      severity: 'low',
+      message: `Fase "${channelAnalysis.phase}": ${scaling.channels.total} canali (consigliati: ${channelAnalysis.recommended} per questa fase)`
     });
-    scaling.score -= 15;
+    scaling.score -= 5;
     scaling.recommendations.push({
-      priority: 'high',
+      priority: 'low',
       action: 'mergeChannels',
-      text: 'Unisci canali simili o poco utilizzati per concentrare l\'attività'
+      text: `Per la fase "${channelAnalysis.phase}" sono consigliati circa ${channelAnalysis.recommended} canali. Puoi unire canali simili o attendere la crescita.`
     });
-  } else if (channelsPerMember < SCALING_THRESHOLDS.channelsPerMember.min && memberCount > 50) {
-    scaling.channels.status = 'under_scaled';
+  } else if (channelAnalysis.status === 'under_scaled') {
     scaling.issues.push({
       type: 'few_channels',
       severity: 'low',
-      message: `Pochi canali per il numero di membri - considera di espandere`
+      message: `Fase "${channelAnalysis.phase}": ${scaling.channels.total} canali (consigliati: ${channelAnalysis.recommended})`
     });
     scaling.score -= 5;
     scaling.recommendations.push({
       priority: 'low',
       action: 'addChannels',
-      text: 'Aggiungi canali tematici per diversificare le conversazioni'
+      text: `Per la fase "${channelAnalysis.phase}" sono consigliati circa ${channelAnalysis.recommended} canali. Aggiungi canali tematici.`
     });
   }
   
