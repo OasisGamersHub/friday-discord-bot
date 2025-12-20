@@ -304,3 +304,83 @@ export async function closeDB() {
     console.log('Disconnesso da MongoDB');
   }
 }
+
+// Sistema coda comandi per comunicazione dashboard-bot
+export async function addPendingCommand(guildId, command, user) {
+  if (!db) return null;
+  
+  try {
+    const result = await db.collection('pendingCommands').insertOne({
+      guildId,
+      command,
+      requestedBy: user,
+      status: 'pending',
+      createdAt: new Date()
+    });
+    return result.insertedId.toString();
+  } catch (error) {
+    console.error('Errore aggiunta comando:', error.message);
+    return null;
+  }
+}
+
+export async function getPendingCommands(guildId) {
+  if (!db) return [];
+  
+  try {
+    return await db.collection('pendingCommands')
+      .find({ guildId, status: 'pending' })
+      .sort({ createdAt: 1 })
+      .toArray();
+  } catch (error) {
+    console.error('Errore lettura comandi pendenti:', error.message);
+    return [];
+  }
+}
+
+export async function updateCommandStatus(commandId, status, result = null) {
+  if (!db) return false;
+  
+  try {
+    const { ObjectId } = await import('mongodb');
+    await db.collection('pendingCommands').updateOne(
+      { _id: new ObjectId(commandId) },
+      { 
+        $set: { 
+          status, 
+          result,
+          completedAt: new Date() 
+        } 
+      }
+    );
+    return true;
+  } catch (error) {
+    console.error('Errore aggiornamento comando:', error.message);
+    return false;
+  }
+}
+
+export async function getCommandResult(commandId) {
+  if (!db) return null;
+  
+  try {
+    const { ObjectId } = await import('mongodb');
+    return await db.collection('pendingCommands').findOne({ _id: new ObjectId(commandId) });
+  } catch (error) {
+    console.error('Errore lettura risultato comando:', error.message);
+    return null;
+  }
+}
+
+export async function cleanOldCommands() {
+  if (!db) return;
+  
+  try {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    await db.collection('pendingCommands').deleteMany({
+      createdAt: { $lt: oneHourAgo }
+    });
+  } catch (error) {
+    console.error('Errore pulizia comandi vecchi:', error.message);
+  }
+}

@@ -23,7 +23,9 @@ import {
   getDailyMetrics,
   getAuditHistory,
   getConfigBackups,
-  getTrends
+  getTrends,
+  addPendingCommand,
+  getCommandResult
 } from './modules/database.js';
 
 const app = express();
@@ -1013,23 +1015,33 @@ app.post('/api/action/:action', requireAuth, apiRateLimit, async (req, res) => {
   try {
     switch (action) {
       case 'audit':
-        addActivityLog({
-          type: 'command',
-          action: 'audit_triggered',
-          user: req.session.user?.username,
-          message: 'Audit avviato da dashboard'
-        });
-        res.json({ success: true, message: 'Audit avviato! Controlla il canale Discord per i risultati.' });
+        const auditCmdId = await addPendingCommand(guildId, 'audit', req.session.user?.username);
+        if (auditCmdId) {
+          addActivityLog({
+            type: 'command',
+            action: 'audit_triggered',
+            user: req.session.user?.username,
+            message: 'Audit avviato da dashboard'
+          });
+          res.json({ success: true, message: 'Audit avviato! I risultati appariranno nel canale Discord.', commandId: auditCmdId });
+        } else {
+          res.json({ success: false, error: 'MongoDB non disponibile. Prova dal canale Discord con !audit' });
+        }
         break;
         
       case 'backup':
-        addActivityLog({
-          type: 'command',
-          action: 'backup_triggered',
-          user: req.session.user?.username,
-          message: 'Backup richiesto da dashboard'
-        });
-        res.json({ success: true, message: 'Richiesta backup inviata! Controlla la sezione Backup Salvati.' });
+        const backupCmdId = await addPendingCommand(guildId, 'backup', req.session.user?.username);
+        if (backupCmdId) {
+          addActivityLog({
+            type: 'command',
+            action: 'backup_triggered',
+            user: req.session.user?.username,
+            message: 'Backup richiesto da dashboard'
+          });
+          res.json({ success: true, message: 'Backup in corso! Controlla la sezione Backup Salvati.', commandId: backupCmdId });
+        } else {
+          res.json({ success: false, error: 'MongoDB non disponibile. Prova dal canale Discord con !backup' });
+        }
         break;
         
       case 'security':

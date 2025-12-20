@@ -21,7 +21,10 @@ import {
   getTodayMetrics,
   getTrends,
   saveConfigBackup,
-  getConfigBackups
+  getConfigBackups,
+  getPendingCommands,
+  updateCommandStatus,
+  cleanOldCommands
 } from './modules/database.js';
 import {
   getCachedAudit,
@@ -103,6 +106,10 @@ function setupScheduledTasks() {
     }
   }, 60000);
   
+  setInterval(processPendingCommands, 5000);
+  
+  setInterval(cleanOldCommands, 30 * 60 * 1000);
+  
   const now = new Date();
   const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0) - now;
   
@@ -119,7 +126,96 @@ function setupScheduledTasks() {
     setInterval(runWeeklyAudit, 7 * 24 * 60 * 60 * 1000);
   }, msUntilSunday);
   
-  console.log('Task schedulati configurati');
+  console.log('Task schedulati configurati (incluso polling comandi dashboard)');
+}
+
+async function processPendingCommands() {
+  for (const guild of client.guilds.cache.values()) {
+    const commands = await getPendingCommands(guild.id);
+    
+    for (const cmd of commands) {
+      try {
+        await updateCommandStatus(cmd._id.toString(), 'processing');
+        
+        const owner = await guild.fetchOwner();
+        const channel = guild.channels.cache.find(c => 
+          c.isTextBased() && c.permissionsFor(guild.members.me)?.has('SendMessages')
+        );
+        
+        let result = { success: false, message: 'Comando non riconosciuto' };
+        
+        switch (cmd.command) {
+          case 'audit':
+            if (channel) {
+              await channel.send(`📊 **Audit richiesto da dashboard** (da ${cmd.requestedBy || 'Dashboard'})`);
+              const structure = await analyzeServerStructure(guild);
+              const security = await getSecurityReport(guild);
+              const aiRecs = await getAIRecommendations(guild, structure, security);
+              const report = await formatReport(guild, structure, security, aiRecs);
+              
+              for (const part of report) {
+                await channel.send(part);
+              }
+              
+              await saveAuditLog(guild.id, { type: 'dashboard', requestedBy: cmd.requestedBy, security: security.score });
+              result = { success: true, message: 'Audit completato e inviato su Discord' };
+            } else {
+              result = { success: false, message: 'Nessun canale disponibile per inviare il report' };
+            }
+            break;
+            
+          case 'backup':
+            const roles = guild.roles.cache.map(r => ({
+              name: r.name,
+              color: r.hexColor,
+              position: r.position,
+              permissions: r.permissions.bitfield.toString(),
+              hoist: r.hoist,
+              mentionable: r.mentionable
+            }));
+            
+            const channels = guild.channels.cache.map(c => ({
+              name: c.name,
+              type: c.type,
+              position: c.position,
+              parentId: c.parentId,
+              topic: c.topic || null
+            }));
+            
+            await saveConfigBackup(guild.id, {
+              guildName: guild.name,
+              roles,
+              channels,
+              memberCount: guild.memberCount,
+              requestedBy: cmd.requestedBy,
+              source: 'dashboard'
+            });
+            
+            if (channel) {
+              await channel.send(`💾 **Backup completato** (richiesto da dashboard da ${cmd.requestedBy || 'utente'})`);
+            }
+            result = { success: true, message: `Backup salvato: ${roles.length} ruoli, ${channels.length} canali` };
+            break;
+            
+          default:
+            result = { success: false, message: `Comando '${cmd.command}' non supportato` };
+        }
+        
+        await updateCommandStatus(cmd._id.toString(), 'completed', result);
+        
+        addActivityLog({
+          type: 'command_executed',
+          action: cmd.command,
+          message: result.message,
+          source: 'dashboard'
+        });
+        
+      } catch (error) {
+        console.error(`Errore esecuzione comando ${cmd.command}:`, error.message);
+        await updateCommandStatus(cmd._id.toString(), 'failed', { success: false, message: error.message });
+      }
+    }
+  }
 }
 
 async function resetDailyCounters() {
