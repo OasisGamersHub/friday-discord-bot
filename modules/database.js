@@ -384,3 +384,188 @@ export async function cleanOldCommands() {
     console.error('Errore pulizia comandi vecchi:', error.message);
   }
 }
+
+// ============================================
+// ECONOMY & SHOP DATA (Scalable Architecture)
+// ============================================
+// Collections:
+// - economyConfig: configurazione economia del server
+// - shopItems: articoli dello shop (inseriti manualmente o via API)
+// - serviceCosts: costi servizi esterni (OpenAI, MongoDB, Fly.io)
+// - economyAnalysis: analisi e suggerimenti generati
+// Future: transactions, memberProfiles, achievements
+
+export async function saveEconomyConfig(guildId, config) {
+  if (!db) return false;
+  
+  try {
+    await db.collection('economyConfig').updateOne(
+      { guildId },
+      { 
+        $set: { 
+          ...config, 
+          updatedAt: new Date(),
+          source: config.source || 'manual' // manual, mee6_export, api
+        } 
+      },
+      { upsert: true }
+    );
+    return true;
+  } catch (error) {
+    console.error('Errore salvataggio config economy:', error.message);
+    return false;
+  }
+}
+
+export async function getEconomyConfig(guildId) {
+  if (!db) return null;
+  
+  try {
+    return await db.collection('economyConfig').findOne({ guildId });
+  } catch (error) {
+    console.error('Errore lettura config economy:', error.message);
+    return null;
+  }
+}
+
+export async function saveShopItem(guildId, item) {
+  if (!db) return null;
+  
+  try {
+    const { ObjectId } = await import('mongodb');
+    const itemId = item._id ? new ObjectId(item._id) : new ObjectId();
+    
+    await db.collection('shopItems').updateOne(
+      { _id: itemId, guildId },
+      { 
+        $set: { 
+          guildId,
+          name: item.name,
+          type: item.type, // role, boost, item, cosmetic
+          price: item.price,
+          currency: item.currency || 'coins',
+          description: item.description || '',
+          salesCount: item.salesCount || 0,
+          isActive: item.isActive !== false,
+          metadata: item.metadata || {},
+          source: item.source || 'manual',
+          updatedAt: new Date()
+        },
+        $setOnInsert: { createdAt: new Date() }
+      },
+      { upsert: true }
+    );
+    return itemId.toString();
+  } catch (error) {
+    console.error('Errore salvataggio shop item:', error.message);
+    return null;
+  }
+}
+
+export async function getShopItems(guildId) {
+  if (!db) return [];
+  
+  try {
+    return await db.collection('shopItems')
+      .find({ guildId })
+      .sort({ type: 1, price: 1 })
+      .toArray();
+  } catch (error) {
+    console.error('Errore lettura shop items:', error.message);
+    return [];
+  }
+}
+
+export async function deleteShopItem(guildId, itemId) {
+  if (!db) return false;
+  
+  try {
+    const { ObjectId } = await import('mongodb');
+    await db.collection('shopItems').deleteOne({ 
+      _id: new ObjectId(itemId), 
+      guildId 
+    });
+    return true;
+  } catch (error) {
+    console.error('Errore eliminazione shop item:', error.message);
+    return false;
+  }
+}
+
+export async function saveServiceCost(guildId, cost) {
+  if (!db) return false;
+  
+  try {
+    await db.collection('serviceCosts').insertOne({
+      guildId,
+      service: cost.service, // openai, mongodb, flyio, discord_nitro
+      amount: cost.amount,
+      currency: cost.currency || 'EUR',
+      period: cost.period, // monthly, usage
+      date: cost.date || new Date(),
+      notes: cost.notes || '',
+      source: cost.source || 'manual',
+      createdAt: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error('Errore salvataggio costo servizio:', error.message);
+    return false;
+  }
+}
+
+export async function getServiceCosts(guildId, days = 30) {
+  if (!db) return [];
+  
+  try {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    return await db.collection('serviceCosts')
+      .find({ guildId, date: { $gte: since } })
+      .sort({ date: -1 })
+      .toArray();
+  } catch (error) {
+    console.error('Errore lettura costi servizi:', error.message);
+    return [];
+  }
+}
+
+export async function saveEconomyAnalysis(guildId, analysis) {
+  if (!db) return false;
+  
+  try {
+    await db.collection('economyAnalysis').insertOne({
+      guildId,
+      ...analysis,
+      createdAt: new Date()
+    });
+    
+    // Keep only last 10 analyses
+    const count = await db.collection('economyAnalysis').countDocuments({ guildId });
+    if (count > 10) {
+      const oldest = await db.collection('economyAnalysis')
+        .find({ guildId })
+        .sort({ createdAt: 1 })
+        .limit(count - 10)
+        .toArray();
+      const idsToDelete = oldest.map(a => a._id);
+      await db.collection('economyAnalysis').deleteMany({ _id: { $in: idsToDelete } });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Errore salvataggio analisi economy:', error.message);
+    return false;
+  }
+}
+
+export async function getLatestEconomyAnalysis(guildId) {
+  if (!db) return null;
+  
+  try {
+    return await db.collection('economyAnalysis')
+      .findOne({ guildId }, { sort: { createdAt: -1 } });
+  } catch (error) {
+    console.error('Errore lettura analisi economy:', error.message);
+    return null;
+  }
+}

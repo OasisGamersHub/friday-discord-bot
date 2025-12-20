@@ -555,6 +555,7 @@ app.get('/', (req, res) => {
             <div class="tab" data-tab="growth">📈 Growth</div>
             <div class="tab" data-tab="structure">🏗️ Structure</div>
             <div class="tab" data-tab="ecosystem">🔄 Ecosystem</div>
+            <div class="tab" data-tab="financial">💰 Financial</div>
             <div class="tab" data-tab="actions">🚀 Azioni</div>
             <div class="tab" data-tab="security">🛡️ Sicurezza</div>
             <div class="tab" data-tab="activity">📋 Attivita</div>
