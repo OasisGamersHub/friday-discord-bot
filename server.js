@@ -1381,6 +1381,64 @@ app.get('/', (req, res) => {
                   </div>
                   <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">Stima: ~0.01-0.05 per audit AI</p>
                 </div>
+              </div>
+            </div>
+            
+            <div class="card" id="streambridge-card">
+              <h2>🌉 Streambridge Pro</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Monitoraggio automatico del servizio Streambridge Pro collegato.</p>
+              
+              <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div class="stat-box" style="text-align: center;">
+                  <div style="font-size: 2rem; font-weight: 700; color: var(--primary);" id="sb-streamers">-</div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted);">Streamer Attivi</div>
+                  <div class="progress-bar" style="margin-top: 8px;">
+                    <div id="sb-streamers-bar" class="progress-fill green" style="width: 0%;"></div>
+                  </div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Max gratuiti: 3</div>
+                </div>
+                
+                <div class="stat-box" style="text-align: center;">
+                  <div style="font-size: 2rem; font-weight: 700; color: var(--secondary);" id="sb-tenants">-</div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted);">Tenant Attivi</div>
+                </div>
+                
+                <div class="stat-box" style="text-align: center;">
+                  <div style="font-size: 1.5rem; font-weight: 700;" id="sb-cost">€0</div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted);">Costo Stimato/Mese</div>
+                </div>
+              </div>
+              
+              <div style="margin-top: 20px;">
+                <h3 style="font-size: 1rem; color: var(--text-primary); margin-bottom: 12px;">Configurazioni Servizi</h3>
+                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;" id="sb-config">
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-dark); border-radius: 6px;">
+                    <span id="sb-mongodb-icon">⏳</span>
+                    <span style="font-size: 0.85rem;">MongoDB</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-dark); border-radius: 6px;">
+                    <span id="sb-flyio-icon">⏳</span>
+                    <span style="font-size: 0.85rem;">Fly.io</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-dark); border-radius: 6px;">
+                    <span id="sb-whatsapp-icon">⏳</span>
+                    <span style="font-size: 0.85rem;">WhatsApp</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-dark); border-radius: 6px;">
+                    <span id="sb-discord-icon">⏳</span>
+                    <span style="font-size: 0.85rem;">Discord</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-dark); border-radius: 6px;">
+                    <span id="sb-stripe-icon">⏳</span>
+                    <span style="font-size: 0.85rem;">Stripe</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div style="margin-top: 16px; padding: 12px; background: var(--bg-dark); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.85rem; color: var(--text-muted);">Ultimo aggiornamento: <span id="sb-last-update">-</span></span>
+                <span id="sb-status" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; background: var(--bg-elevated); color: var(--text-muted);">Caricamento...</span>
+              </div>
                 
                 <div class="stat-box">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -2238,6 +2296,54 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
             } catch (e) { console.log('Financial error:', e); }
           }
           
+          async function loadStreambridge() {
+            try {
+              const res = await fetch('/api/streambridge/status');
+              const data = await res.json();
+              
+              if (data.error) {
+                document.getElementById('sb-status').textContent = 'Offline';
+                document.getElementById('sb-status').style.background = '#EF4444';
+                document.getElementById('sb-status').style.color = '#fff';
+                return;
+              }
+              
+              document.getElementById('sb-streamers').textContent = data.activeStreamers + '/' + data.maxFreeStreamers;
+              document.getElementById('sb-tenants').textContent = data.activeTenants || data.totalTenants || '-';
+              
+              const streamerPercent = (data.activeStreamers / data.maxFreeStreamers) * 100;
+              document.getElementById('sb-streamers-bar').style.width = streamerPercent + '%';
+              document.getElementById('sb-streamers-bar').className = 'progress-fill ' + (streamerPercent >= 100 ? 'red' : streamerPercent >= 66 ? 'yellow' : 'green');
+              
+              let totalCost = 0;
+              if (data.costs) {
+                if (data.costs.mongodb !== 'Gratuito') totalCost += 8;
+                if (data.costs.flyio !== 'Gratuito') totalCost += 4.5;
+                if (data.costs.whatsapp !== 'Gratuito') totalCost += 10;
+              }
+              document.getElementById('sb-cost').textContent = totalCost > 0 ? '~€' + totalCost : '€0';
+              document.getElementById('sb-cost').style.color = totalCost > 0 ? '#EF4444' : '#22C55E';
+              
+              if (data.config) {
+                document.getElementById('sb-mongodb-icon').textContent = data.config.mongodb ? '✅' : '❌';
+                document.getElementById('sb-flyio-icon').textContent = data.config.flyio ? '✅' : '❌';
+                document.getElementById('sb-whatsapp-icon').textContent = data.config.whatsapp ? '✅' : '❌';
+                document.getElementById('sb-discord-icon').textContent = data.config.discord ? '✅' : '❌';
+                document.getElementById('sb-stripe-icon').textContent = data.config.stripe ? '✅' : '❌';
+              }
+              
+              document.getElementById('sb-last-update').textContent = new Date().toLocaleTimeString('it-IT');
+              document.getElementById('sb-status').textContent = 'Online';
+              document.getElementById('sb-status').style.background = '#22C55E';
+              document.getElementById('sb-status').style.color = '#fff';
+            } catch (e) {
+              document.getElementById('sb-status').textContent = 'Errore';
+              document.getElementById('sb-status').style.background = '#EF4444';
+              document.getElementById('sb-status').style.color = '#fff';
+              console.log('Streambridge error:', e);
+            }
+          }
+          
           // Auto-refresh al login - triggera analisi se dati vecchi
           async function autoRefreshOnLogin() {
             try {
@@ -2269,6 +2375,7 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
           loadShopItems();
           loadShopSuggestions();
           loadFinancial();
+          loadStreambridge();
           loadInvitesLeaderboard();
           loadRecentInvites();
           loadStrategyReport();
@@ -2285,6 +2392,7 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
           setInterval(loadEcosystem, 120000);
           setInterval(loadShopItems, 120000);
           setInterval(loadFinancial, 120000);
+          setInterval(loadStreambridge, 120000);
           setInterval(loadInvitesLeaderboard, 60000);
           setInterval(loadRecentInvites, 60000);
           
@@ -3240,6 +3348,35 @@ app.get('/api/financial/costs', requireAuth, apiRateLimit, async (req, res) => {
       discord: { status: 'ok', rateLimit: 'normal' },
       totalCost: 0,
       error: error.message 
+    });
+  }
+});
+
+// ============================================
+// STREAMBRIDGE API ENDPOINT
+// ============================================
+
+app.get('/api/streambridge/status', requireAuth, apiRateLimit, async (req, res) => {
+  try {
+    const response = await fetch('https://streambridgepro.com/api/friday-status', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (!response.ok) {
+      return res.json({ error: 'Streambridge non raggiungibile', status: response.status });
+    }
+    
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.json({ 
+      error: error.name === 'TimeoutError' ? 'Timeout connessione' : error.message,
+      activeStreamers: 0,
+      maxFreeStreamers: 3,
+      config: { mongodb: false, flyio: false, whatsapp: false, discord: false, stripe: false },
+      costs: { mongodb: 'N/A', flyio: 'N/A', whatsapp: 'N/A' }
     });
   }
 });
