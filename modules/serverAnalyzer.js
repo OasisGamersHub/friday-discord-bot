@@ -1083,9 +1083,15 @@ export async function analyzeServerScaling(guild, dailyMetrics = []) {
 export async function checkMEE6Economy(guild) {
   const channels = guild.channels.cache;
   const roles = guild.roles.cache;
-  const members = guild.members.cache;
   
-  const mee6Bot = members.get(MEE6_BOT_ID);
+  let mee6Bot = guild.members.cache.get(MEE6_BOT_ID);
+  if (!mee6Bot) {
+    try {
+      mee6Bot = await guild.members.fetch(MEE6_BOT_ID).catch(() => null);
+    } catch (e) {
+      mee6Bot = null;
+    }
+  }
   
   const economy = {
     mee6Present: !!mee6Bot,
