@@ -699,32 +699,60 @@ app.get('/', (req, res) => {
           </div>
           
           <div id="structure" class="tab-content">
+            <div class="card" style="border-left: 3px solid var(--accent-gold);">
+              <h2>📋 Come Funziona Structure360</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                <strong>Cos'e:</strong> Un'analisi completa che confronta la struttura del tuo server con le best practices delle community gaming di successo nel 2025.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                <strong>Perche serve:</strong> Una struttura ben organizzata aumenta la retention dei membri, facilita la navigazione e rende il server piu professionale. I server gaming top hanno una struttura ottimizzata che guida i nuovi utenti.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                <strong>Come aggiornare:</strong> Vai nel tab <strong>Azioni</strong> e clicca <strong>Structure360</strong>, oppure scrivi <code style="background: var(--surface); padding: 2px 6px; border-radius: 4px;">!structure</code> su Discord. I dati si aggiornano automaticamente qui.
+              </p>
+              <p style="color: var(--text-muted); font-size: 0.85rem;">Ultimo aggiornamento: <span id="structure-updated">Mai eseguito</span></p>
+            </div>
+            
             <div class="card">
               <h2>🎯 Benchmark Gaming 2025</h2>
-              <p style="color: var(--text-secondary); margin-bottom: 16px;">Confronto della struttura server con le best practices per community gaming. Clicca "Structure360" nel tab Azioni per aggiornare.</p>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Perche conta:</strong> Lo score indica quanto il tuo server e allineato con i server gaming di successo. Un punteggio alto significa struttura professionale e navigazione intuitiva.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                <strong>Obiettivo:</strong> Punta a 80+ per una struttura ottimale. Sotto 60 significa che mancano elementi essenziali.
+              </p>
               <div class="grid">
                 <div class="stat-box">
                   <div class="value" id="structure-score">-</div>
                   <div class="label">Score Struttura</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">80+ ottimo, 60-79 buono, &lt;60 migliorabile</p>
                 </div>
                 <div class="stat-box">
                   <div class="value" id="structure-phase">-</div>
                   <div class="label">Fase Crescita</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Determina quanti canali dovresti avere</p>
                 </div>
                 <div class="stat-box">
                   <div class="value" id="structure-channels">-</div>
                   <div class="label">Canali Totali</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Troppi = confusione, pochi = mancanze</p>
                 </div>
                 <div class="stat-box">
                   <div class="value" id="structure-private">-</div>
                   <div class="label">Canali Privati</div>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Canali non visibili a tutti i membri</p>
                 </div>
               </div>
             </div>
             
             <div class="card">
               <h2>🤖 Integrazione MEE6</h2>
-              <p style="color: var(--text-secondary); margin-bottom: 16px;">Friday rileva le funzionalita MEE6 attive per evitare duplicazioni e suggerire complementi.</p>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Perche conta:</strong> Se usi MEE6, Friday evita di duplicare le sue funzioni (livelli, economia, achievements). Cosi i due bot lavorano in sinergia senza conflitti.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                <strong>Cosa fare:</strong> Se MEE6 gestisce gia livelli/economia, Friday si concentrera su sicurezza, analisi e suggerimenti di crescita.
+              </p>
               <div class="grid" style="grid-template-columns: 1fr 2fr;">
                 <div class="stat-box">
                   <div class="value" id="mee6-detected">-</div>
@@ -739,33 +767,53 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>✅ Ben Configurato</h2>
-              <p style="color: var(--text-secondary); margin-bottom: 12px;">Canali e categorie che rispettano le best practices gaming 2025.</p>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Perche conta:</strong> Questi canali seguono gia le best practices. Sono la base solida del tuo server.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                <strong>Cosa fare:</strong> Mantieni questi canali attivi e usali come modello per crearne di nuovi.
+              </p>
               <div id="structure-configured" class="activity-log">
-                <p style="color: var(--text-muted);">Esegui Structure360 per analizzare...</p>
+                <p style="color: var(--text-muted);">Clicca "Structure360" nel tab Azioni per analizzare il server...</p>
               </div>
             </div>
             
             <div class="card">
               <h2>❌ Mancanti Essenziali</h2>
-              <p style="color: var(--text-secondary); margin-bottom: 12px;">Canali raccomandati che mancano nel server.</p>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Perche conta:</strong> Questi canali sono presenti nei server gaming di successo e migliorano l'esperienza utente. Senza di loro, i membri potrebbero non sapere dove andare.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                <strong>Cosa fare:</strong> Valuta di creare i canali suggeriti. Non devi crearli tutti: scegli quelli piu utili per la tua community.
+              </p>
               <div id="structure-missing" class="activity-log">
-                <p style="color: var(--text-muted);">Esegui Structure360 per analizzare...</p>
+                <p style="color: var(--text-muted);">Clicca "Structure360" nel tab Azioni per analizzare il server...</p>
               </div>
             </div>
             
             <div class="card">
               <h2>💡 Raccomandazioni 360°</h2>
-              <p style="color: var(--text-secondary); margin-bottom: 12px;">Consigli prioritizzati per migliorare struttura, engagement, growth e monetizzazione.</p>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Perche conta:</strong> Consigli prioritizzati per 6 aree: Struttura, Scalabilita, Engagement, Growth, Eventi e Monetizzazione. Ogni suggerimento ha impatto e difficolta stimati.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                <strong>Cosa fare:</strong> Inizia dai suggerimenti ad alto impatto e bassa difficolta per vedere risultati rapidi.
+              </p>
               <div id="structure-recommendations" class="activity-log">
-                <p style="color: var(--text-muted);">Esegui Structure360 per analizzare...</p>
+                <p style="color: var(--text-muted);">Clicca "Structure360" nel tab Azioni per analizzare il server...</p>
               </div>
             </div>
             
             <div class="card">
               <h2>🔧 Modifiche Proposte</h2>
-              <p style="color: var(--text-secondary); margin-bottom: 12px;">Azioni concrete suggerite per ottimizzare il server (richiede approvazione manuale).</p>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                <strong>Perche conta:</strong> Azioni concrete che puoi fare subito: creare nuovi canali, unire canali simili, archiviare canali inutilizzati.
+              </p>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                <strong>Cosa fare:</strong> Queste sono solo proposte - decidi tu cosa applicare. Friday non modifica nulla automaticamente.
+              </p>
               <div id="structure-changes" class="activity-log">
-                <p style="color: var(--text-muted);">Esegui Structure360 per analizzare...</p>
+                <p style="color: var(--text-muted);">Clicca "Structure360" nel tab Azioni per analizzare il server...</p>
               </div>
             </div>
           </div>
@@ -1408,6 +1456,10 @@ app.get('/', (req, res) => {
               const data = await res.json();
               
               if (data.analysis) {
+                if (data.updatedAt) {
+                  const updated = new Date(data.updatedAt);
+                  document.getElementById('structure-updated').textContent = updated.toLocaleString('it-IT');
+                }
                 document.getElementById('structure-score').textContent = data.analysis.benchmark.score + '/100';
                 document.getElementById('structure-score').style.color = data.analysis.benchmark.score >= 80 ? '#2ecc71' : data.analysis.benchmark.score >= 60 ? '#f1c40f' : '#e74c3c';
                 document.getElementById('structure-phase').textContent = data.analysis.phase;
