@@ -197,6 +197,17 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Deploy su Fly.io
 
+### Deploy Automatico via GitHub (METODO PRINCIPALE)
+Il deploy avviene **automaticamente** quando fai push su GitHub:
+1. Fai le modifiche su Replit
+2. Il codice viene pushato su GitHub (branch `main`)
+3. GitHub Actions esegue automaticamente il deploy su Fly.io
+4. Workflow file: `.github/workflows/fly.yml`
+
+**Requisito**: Il secret `FLY_API_TOKEN` deve essere configurato su GitHub:
+- Vai su GitHub repo → Settings → Secrets and variables → Actions
+- Aggiungi `FLY_API_TOKEN` con il token da Fly.io
+
 ### Configurazione Iniziale (già fatta)
 - App: `friday-discord-bot`
 - Organizzazione: `oasis-gamers-hub-325`
@@ -250,6 +261,10 @@ FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly logs
 2. **401 Unauthorized durante deploy**: Token scaduto, rigeneralo su Fly.io
 3. **MongoDB connection error**: Password con caratteri speciali? Usa URL encoding (es. `@` diventa `%40`)
 4. **Bot non risponde**: Controlla i logs con `fly logs`
+5. **Login riporta alla home (invalid state)**: Le sessioni sono in memoria, serve 1 sola macchina:
+   ```bash
+   FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly scale count 1 --yes
+   ```
 
 ### Nota su MONGODB_URI
 Se la password MongoDB contiene caratteri speciali, devono essere codificati:
