@@ -1,283 +1,47 @@
-# Discord Community Bot (Friday)
-
 ## Overview
 
-Bot Discord avanzato per la gestione e analisi di server community Oasis Gamers Hub. Offre audit di sicurezza, controllo separazione fasce d'età, suggerimenti AI per la crescita della community, azioni automatiche per correggere problemi, protezione anti-raid, backup configurazione e dashboard web interattiva con autenticazione OAuth2 Discord.
+This project is an advanced Discord bot designed for managing and analyzing the Oasis Gamers Hub community server. It provides security audits, age-gating control, AI-powered community growth suggestions, automatic problem-solving actions, anti-raid protection, configuration backups, and an interactive web dashboard with Discord OAuth2 authentication. The bot aims to ensure server health, promote growth, and offer a professional management interface.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language (Italian)
 
-## Recent Changes
-
-- **2024-12-20**: Professional Dashboard Redesign
-  - Sistema CSS variables con colori brand teal (#4FD1C5) e golden (#D4A373)
-  - Tipografia professionale: Space Grotesk per titoli, Inter per body text
-  - Dark theme sofisticato con gradienti radiali e effetti glass-morphism
-  - Tabs con stile pill-container e animazioni smooth
-  - Chart.js colori aggiornati per palette brand
-  - Activity items con hover effects e scrollbar custom
-  - Form controls (select, input) stilizzati coerentemente
-  - Rimossi tutti gli stili inline in favore di CSS variables
-- **2024-12-20**: Sistema Automazioni Complete
-  - Scalecheck automatico ogni 6 ore con cache sharedState
-  - Report giornaliero via DM all'owner alle 21:00
-  - Backup automatico settimanale della configurazione
-  - Notifiche milestone (50, 100, 250, 500, 750, 1000 membri)
-  - Scalecheck remoto dalla dashboard (nuovo Quick Action)
-  - Indicatore dati live/stimati nel pannello Growth
-  - Funzioni `runAutoScalecheck()`, `runDailyReport()`, `runWeeklyBackup()`, `checkMilestones()`
-- **2024-12-20**: Sistema Scaling & Economy Analysis
-  - Nuovo comando `!scalecheck` per analisi completa scaling server e MEE6 economy
-  - Dashboard pannello "Growth" con progresso obiettivo 1000 membri
-  - Analisi saturazione canali, ruoli orfani, bilanciamento staff
-  - Rilevamento MEE6 economy, achievements, monetization
-  - Trend settimanali (join, leave, messaggi) con raccomandazioni prioritizzate
-  - Funzioni `analyzeServerScaling()`, `checkMEE6Economy()`, `formatScalingReport()`
-  - API endpoint `/api/growth` per dati live nella dashboard
-- **2024-12-20**: Generazione testi AI
-  - Nuovo comando `!testi` per suggerimenti testo personalizzati
-  - Genera messaggi benvenuto, regole, descrizioni canali pronti all'uso
-  - Rileva elementi mancanti (regole, benvenuto, annunci, presentazioni, ruoli)
-  - Funzioni `generateTextSuggestions()` e `formatTextSuggestions()` in serverAnalyzer.js
-- **2024-12-20**: Sistema coda comandi dashboard-bot
-  - Comunicazione dashboard-bot via MongoDB (pendingCommands collection)
-  - Polling comandi ogni 5 secondi nel bot
-  - Dashboard può avviare audit e backup in remoto
-  - API endpoint `/api/action/:action` con coda persistente
-- **2024-12-19**: Dashboard interattiva potenziata
-  - Nuovo tab "Azioni" con Quick Actions (Audit, Backup, Security Check, Refresh Stats)
-  - Configurazione Anti-Raid dalla dashboard (soglia join, finestra tempo)
-  - Lista backup salvati con timestamp e dettagli
-  - Risultato ultimo comando eseguito in tempo reale
-  - API endpoints: POST /api/action/:action, POST /api/config/antiraid
-- **2024-12-19**: Grafici extra per analytics avanzate
-  - Grafico a barre per attivita messaggi (30 giorni)
-  - Grafico dual-line per flusso membri Join/Leave (verde/rosso)
-  - Metriche giornaliere: messageCount, joinCount, leaveCount persistite su MongoDB
-  - Reset automatico contatori a mezzanotte con persistenza
-  - Handler guildMemberRemove per tracciare le leave
-  - Idratazione contatori da database al riavvio (nessuna perdita dati)
-- **2024-12-19**: Sistema sicurezza all'avanguardia
-  - Headers HTTP sicuri (CSP, HSTS, X-Frame-Options, X-XSS-Protection)
-  - Rate limiting API (60 richieste/min per IP)
-  - Protezione brute-force (5 tentativi = blocco 15 min)
-  - Audit log sicurezza con tracking IP
-  - Sessioni sicure (HttpOnly, SameSite strict, timeout 4h)
-  - Tab Sicurezza nella dashboard con statistiche live
-  - Logging eventi login/logout/accessi negati
-- **2024-12-19**: Dashboard interattiva con statistiche live
-  - Interfaccia a 6 tab (Overview, Azioni, Sicurezza, Attivita, Comandi, Funzionalita)
-  - Grafici Chart.js per trend crescita 30 giorni
-  - API endpoints per dati live (/api/status, /api/activity, /api/metrics, /api/audits, /api/backups, /api/security)
-  - Alert anti-raid in tempo reale sulla dashboard
-  - Modulo sharedState.js per comunicazione bot-to-dashboard
-- **2024-12-19**: Sistema anti-raid e backup
-  - Protezione anti-raid: rileva 10+ join in 30 secondi, notifica owner
-  - Comando `!backup` per salvare ruoli, canali e permessi su MongoDB (max 10 backup)
-  - Funzioni database per gestione backup configurazione
-- **2024-12-19**: Ottimizzazioni scalabilità e performance
-  - Nuovo modulo cache.js per caching risultati audit (6 ore TTL)
-  - Rate limiting su comandi costosi (audit: 10 min, mee6: 5 min)
-  - Batching ottimizzato scritture MongoDB (ogni 100 messaggi)
-  - TTL indexes automatici per auto-pulizia dati vecchi (30-90 giorni)
-  - Supporto `!audit --force` per bypassare cache
-- **2024-12-19**: Sistema compatibilità MEE6 Premium
-  - Nuovo comando `!mee6` per check compatibilità con MEE6
-  - Rilevamento automatico funzionalità MEE6 attive (leveling, welcome, mod-log, reaction roles)
-  - Analisi simbiosi Friday + MEE6 con punteggio
-  - Integrazione nel report !audit con sezione dedicata MEE6
-  - Friday evita duplicazioni: non tocca mai funzioni già gestite da MEE6
-- **2024-12**: Aggiunta configurazione deploy Fly.io + MongoDB
-  - Dockerfile e fly.toml per deploy su Fly.io
-  - Modulo database.js per persistenza dati su MongoDB Atlas
-  - Script start.js per avvio produzione
-- **2024-12**: Implementate funzionalità complete di analisi server
-  - Modulo serverAnalyzer.js per analisi struttura, sicurezza, e separazione età
-  - Integrazione OpenAI per suggerimenti AI intelligenti
-  - Sistema di azioni automatiche (!fix) per correggere problemi
-  - Dashboard web aggiornata con visualizzazione comandi
-  - Protezione CSRF nel flusso OAuth2
-
 ## System Architecture
 
-### Discord Bot (index.js)
-- discord.js v14 per interazioni API Discord
-- Comandi disponibili:
-  - `!ping` - Test connessione
-  - `!info` - Info server
-  - `!stats` - Statistiche server
-  - `!audit` - Analisi completa con AI (suggerimenti graduali in 3 fasi + check MEE6)
-  - `!security` - Report sicurezza
-  - `!age` - Controllo separazione fasce d'età
-  - `!schema` - Mappa visuale struttura server (categorie, canali, ruoli)
-  - `!trend` - Andamento e trend crescita community
-  - `!mee6` - Check compatibilità con MEE6 Premium (simbiosi, funzioni rilevate, conflitti)
-  - `!fix <azione>` - Applica correzioni automatiche (riusa ruoli esistenti)
-  - `!backup` - Crea backup configurazione server (ruoli, canali, permessi)
-  - `!testi` - Genera suggerimenti testo AI (benvenuto, regole, descrizioni)
-  - `!scalecheck` - Analisi scaling server + MEE6 economy/monetization
-  - `!help` - Lista comandi
-- Tracciamento statistiche in-memory e su MongoDB (join, messaggi, attività canali)
-- Sistema di snapshot per tracciare evoluzione struttura nel tempo
-- Trend analysis con confronto metriche settimanali
-- Sistema anti-raid automatico con notifica owner
+### UI/UX Decisions
 
-### Server Analyzer Module (modules/serverAnalyzer.js)
-- `findExistingAgeRoles()` - Cerca ruoli età già esistenti (fuzzy matching)
-- `analyzeServerStructure()` - Mappa canali, categorie, ruoli, permessi
-- `checkAgeSeparation()` - Verifica separazione minorenni/adulti
-- `getSecurityReport()` - Report completo sicurezza con punteggio
-- `getAIRecommendations()` - Suggerimenti AI graduali in 3 fasi (breve/medio/lungo termine)
-- `executeAction()` - Esegue correzioni automatiche (riusa ruoli esistenti):
-  - createAgeRoles - Riusa o crea ruoli Under18/Over18
-  - blockMinorsFromNSFW - Blocca minorenni da canali NSFW
-  - increaseVerification - Aumenta livello verifica
-  - disableEveryoneInvites - Disabilita inviti per @everyone
-- `formatReport()` - Formatta report per Discord con fasi
-- `generateServerSchema()` - Genera mappa visuale struttura server
-- `generateTextSuggestions()` - Genera testi AI per canali mancanti:
-  - Messaggi di benvenuto personalizzati
-  - Regole del server numerate
-  - Descrizioni per canali (generale, gaming, off-topic)
-  - Messaggi per selezione ruoli
-  - Template per annunci
-- `formatTextSuggestions()` - Formatta suggerimenti testo per Discord
-- `checkMEE6Compatibility()` - Analizza simbiosi con MEE6 Premium:
-  - Rileva presenza MEE6 nel server
-  - Identifica funzionalità MEE6 attive (leveling, welcome, mod-log, reaction roles)
-  - Analizza canali usati da MEE6
-  - Verifica conflitti di permessi/gerarchia ruoli
-  - Genera punteggio simbiosi e raccomandazioni
+The web dashboard features a professional design using CSS variables with a brand palette of teal (#4FD1C5) and golden (#D4A373). It employs Space Grotesk for titles and Inter for body text, along with a sophisticated dark theme, radial gradients, and glass-morphism effects. Interactive elements like tabbed navigation with pill-container styling, animated hover effects, and custom scrollbars are implemented. All styling utilizes CSS variables for consistency, removing inline styles. Chart.js colors are updated to match the brand palette.
 
-### Shared State Module (modules/sharedState.js)
-- Stato condiviso tra bot Discord e web server
-- `setBotOnline()` / `getBotStatus()` - Stato bot e uptime
-- `updateGuildStats()` / `getGuildStats()` - Statistiche guild
-- `addActivityLog()` / `getActivityLog()` - Log attività per dashboard
-- `setAntiRaidStatus()` / `getAntiRaidStatus()` - Stato anti-raid
+### Technical Implementations
 
-### Web Dashboard (server.js)
-- Express 5.x su porta 5000
-- Autenticazione OAuth2 Discord con protezione CSRF (state parameter)
-- Sessioni sicure con express-session
-- Dashboard interattiva con 4 tab (Overview, Attività, Comandi, Funzionalità)
-- Grafici Chart.js per trend crescita 30 giorni
-- API endpoints protetti per dati live:
-  - GET /api/status - Stato bot e guild
-  - GET /api/activity - Log attività recenti
-  - GET /api/metrics - Metriche 30 giorni per grafici
-  - GET /api/audits - Storico audit
-  - GET /api/backups - Lista backup configurazione
-- Alert anti-raid in tempo reale
+The system consists of a Discord bot built with `discord.js v14` and a web dashboard using `Express 5.x`. Data persistence is handled by MongoDB Atlas. Key modules include:
 
-### AI Integration
-- OpenAI via Replit AI Integrations
-- Modello gpt-4o per raccomandazioni intelligenti
-- Nessuna API key richiesta (usa crediti Replit)
+-   **Discord Bot (`index.js`):** Manages Discord API interactions, handles various commands for server analysis, security, age verification, structure mapping, trend analysis, MEE6 compatibility checks, automatic fixes, backups, AI text generation, and scaling analysis. It also includes an automatic anti-raid system.
+-   **Server Analyzer (`modules/serverAnalyzer.js`):** Core logic for server analysis, including structure mapping, age separation checks, security reporting, and AI-driven recommendations using OpenAI. It can execute automatic corrections and generate server schemas and AI-powered text suggestions for server content. It also includes comprehensive MEE6 compatibility analysis to prevent feature duplication.
+-   **Shared State (`modules/sharedState.js`):** Facilitates real-time communication and data sharing between the Discord bot and the web dashboard for statuses, statistics, activity logs, and anti-raid status.
+-   **Web Dashboard (`server.js`):** Provides an interactive interface with OAuth2 Discord authentication, secure sessions, and multiple tabs (Overview, Actions, Security, Activity, Commands, Functionality). It displays live statistics, audit logs, backup lists, and real-time anti-raid alerts using Chart.js for data visualization. It also supports remote actions via a command queuing system.
+-   **Automations:** Includes automatic scale checks every 6 hours, daily reports, weekly configuration backups, and milestone notifications.
+-   **Security:** Implements secure HTTP headers, API rate limiting, brute-force protection, security audit logs, and secure sessions.
 
-## Environment Variables Required
+### Feature Specifications
 
-- `DISCORD_BOT_TOKEN` - Token del bot Discord
-- `DISCORD_CLIENT_ID` - Client ID applicazione Discord
-- `DISCORD_CLIENT_SECRET` - Client Secret per OAuth2
-- `SESSION_SECRET` - Chiave per sessioni web
-- `MONGODB_URI` - (opzionale) Connection string MongoDB Atlas
-- `AI_INTEGRATIONS_OPENAI_API_KEY` - (automatico da Replit)
-- `AI_INTEGRATIONS_OPENAI_BASE_URL` - (automatico da Replit)
+-   **360° Structure Analysis:** Command `!structure` provides a comprehensive server analysis against 2025 gaming benchmarks, identifying private channels, and offering prioritized recommendations for structure, scalability, engagement, growth, events, and monetization. It also proposes concrete changes (create, merge, archive) and integrates with MEE6 to avoid duplication.
+-   **Scaling & Economy Analysis:** Command `!scalecheck` analyzes server scaling, MEE6 economy, and offers prioritized recommendations based on weekly trends (joins, leaves, messages).
+-   **AI Text Generation:** Command `!testi` generates personalized welcome messages, rules, channel descriptions, and other essential server texts, detecting missing elements.
+-   **Anti-Raid System:** Automatically detects rapid joins (10+ in 30 seconds) and notifies the owner, with configuration options available via the dashboard.
+-   **Backup System:** Command `!backup` allows saving server configuration (roles, channels, permissions) to MongoDB, with automatic weekly backups.
+-   **MEE6 Compatibility:** Command `!mee6` checks for active MEE6 features to ensure harmonious operation and avoid conflicts, with a symbiosis score.
+-   **Advanced Analytics:** Tracks daily metrics (message count, join count, leave count) persisted to MongoDB and visualizes trends through Chart.js graphs on the dashboard.
+-   **Command Queue:** Dashboard-bot communication is managed via a MongoDB pendingCommands collection, allowing the dashboard to initiate remote actions.
 
-## File Structure
+### System Design Choices
 
-```
-/
-├── index.js              # Bot Discord principale
-├── server.js             # Web server con OAuth2 e API
-├── start.js              # Script avvio produzione
-├── Dockerfile            # Container per Fly.io
-├── fly.toml              # Config Fly.io
-├── package.json          # Dipendenze Node.js
-├── modules/
-│   ├── serverAnalyzer.js # Modulo analisi server
-│   ├── database.js       # Connessione MongoDB + funzioni backup
-│   ├── cache.js          # Cache audit con TTL
-│   └── sharedState.js    # Stato condiviso bot-dashboard
-└── .replit_integration_files/  # File integrazione AI (non modificare)
-```
-
-## Deploy su Fly.io
-
-### ⚡ DEPLOY RAPIDO (usa questo!)
-
-**Metodo 1 - Push GitHub (automatico):**
-Il codice viene pushato automaticamente su GitHub quando fai modifiche.
-GitHub Actions fa il deploy su Fly.io automaticamente.
-
-**Metodo 2 - Dalla shell Replit (se serve):**
-```bash
-git push origin main
-```
-Aspetta 1-2 minuti, il deploy parte automaticamente su GitHub Actions.
-
----
-
-### Configurazione (già fatta)
-- App: `friday-discord-bot`
-- URL: https://friday.streambridgepro.com
-- Regione: Frankfurt (fra)
-- GitHub: OasisGamersHub/friday-discord-bot
-
-### Se il Deploy Fallisce
-
-**Errore "401 Unauthorized":**
-Il token Fly.io è scaduto. Rigeneralo:
-1. Vai su https://fly.io → login con oasisgaminghub@proton.me
-2. Seleziona org "Oasis Gamers Hub" in alto
-3. Menu laterale → "Tokens" → Crea nuovo token
-4. Copia il token su GitHub: repo → Settings → Secrets → `FLY_API_TOKEN`
-5. Copia anche su Replit: Secrets → `FLY_API_TOKEN`
-
-**Errore "Login non funziona":**
-I secrets su Fly.io non sono aggiornati. Sincronizzali:
-```bash
-FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly secrets set \
-  DISCORD_BOT_TOKEN="$DISCORD_BOT_TOKEN" \
-  DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
-  DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
-  SESSION_SECRET="$SESSION_SECRET" \
-  MONGODB_URI="$MONGODB_URI" \
-  DASHBOARD_URL="https://friday.streambridgepro.com" \
-  OASIS_GUILD_ID="1435348267268313090"
-```
-
-**Errore "invalid state" dopo login:**
-Serve 1 sola macchina (sessioni in memoria):
-```bash
-FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly scale count 1 --yes
-```
-
-### Comandi Utili
-```bash
-# Stato app
-FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly status
-
-# Logs in tempo reale
-FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly logs
-
-# Riavvia senza nuovo deploy
-FLY_ACCESS_TOKEN="$FLY_API_TOKEN" fly machines restart
-```
-
-### Note
-- Password MongoDB con caratteri speciali: usa URL encoding (`@` → `%40`, `#` → `%23`)
-- GitHub Actions workflow: `.github/workflows/fly.yml`
-- Bot e dashboard girano nello STESSO processo (start.js) per condividere sharedState
+The architecture is designed for scalability and performance, utilizing caching for audit results (6-hour TTL), rate limiting on intensive commands, optimized MongoDB batching, and automatic TTL indexes for data cleanup. The bot and dashboard run within the same process on Fly.io to facilitate shared state management. Deployment is managed via Docker and GitHub Actions for continuous integration.
 
 ## External Dependencies
 
-- discord.js v14.x - Framework Discord
-- express v5.x - Web server
-- express-session - Gestione sessioni
-- cookie-parser - Cookie handling
-- openai - SDK OpenAI
-- mongodb - Driver MongoDB
-- p-limit, p-retry - Rate limiting e retry
+-   **discord.js v14.x:** Discord API interaction.
+-   **express v5.x, express-session, cookie-parser:** Web server, session management, and cookie handling for the dashboard.
+-   **mongodb:** MongoDB driver for database interactions.
+-   **openai:** OpenAI SDK for AI-powered features (utilizes Replit AI Integrations).
+-   **p-limit, p-retry:** Utilities for rate limiting and retrying operations.
