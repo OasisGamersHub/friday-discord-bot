@@ -33,6 +33,11 @@ The system consists of a Discord bot built with `discord.js v14` and a web dashb
 -   **MEE6 Compatibility:** Command `!mee6` checks for active MEE6 features to ensure harmonious operation and avoid conflicts, with a symbiosis score.
 -   **Advanced Analytics:** Tracks daily metrics (message count, join count, leave count) persisted to MongoDB and visualizes trends through Chart.js graphs on the dashboard.
 -   **Command Queue:** Dashboard-bot communication is managed via a MongoDB pendingCommands collection, allowing the dashboard to initiate remote actions.
+-   **Financial Hub:** Tab dedicated to cost monitoring and MEE6 shop analysis. Features include:
+    -   **Costi & Limiti Panel:** Visual progress bars tracking free-tier service usage (MongoDB Atlas M0 512MB, Fly.io 3 VMs + 160GB, OpenAI calls/month, Discord API).
+    -   **MEE6 Shop Analyzer:** Copy-paste parser (block-based, blank-line delimited) to import shop items from MEE6 dashboard exports. Zero API cost approach.
+    -   **Actionable Suggestions Engine:** Rule-based analysis (without AI) providing optimization tips: price gap analysis, item type variety, expensive item warnings, shop size recommendations.
+    -   **Shop Items Database:** MongoDB collections for persisting shop items, service costs, and economy analysis data.
 
 ### System Design Choices
 
