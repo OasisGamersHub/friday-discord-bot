@@ -1621,6 +1621,21 @@ app.post('/api/action/:action', requireAuth, apiRateLimit, async (req, res) => {
         res.json({ success: true, message: 'Statistiche aggiornate!' });
         break;
         
+      case 'scalecheck':
+        const scalecheckCmdId = await addPendingCommand(guildId, 'scalecheck', req.session.user?.username);
+        if (scalecheckCmdId) {
+          addActivityLog({
+            type: 'command',
+            action: 'scalecheck_triggered',
+            user: req.session.user?.username,
+            message: 'Scalecheck avviato da dashboard'
+          });
+          res.json({ success: true, message: 'Scalecheck avviato! I dati MEE6 saranno aggiornati nel pannello Growth.', commandId: scalecheckCmdId });
+        } else {
+          res.json({ success: false, error: 'MongoDB non disponibile. Prova dal canale Discord con !scalecheck' });
+        }
+        break;
+        
       default:
         res.json({ success: false, error: 'Azione non riconosciuta' });
     }
