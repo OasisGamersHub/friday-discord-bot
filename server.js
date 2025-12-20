@@ -122,7 +122,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     secure: isProduction,
-    sameSite: 'strict',
+    sameSite: 'lax',
     httpOnly: true,
     maxAge: 4 * 60 * 60 * 1000
   }
