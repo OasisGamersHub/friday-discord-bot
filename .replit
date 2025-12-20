@@ -45,3 +45,8 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+DASHBOARD_URL = "https://friday.streambridgepro.com"
