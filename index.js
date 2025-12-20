@@ -45,7 +45,8 @@ import {
   addActivityLog,
   setAntiRaidStatus,
   getAntiRaidStatus,
-  setGrowthData
+  setGrowthData,
+  setStructureData
 } from './modules/sharedState.js';
 
 const client = new Client({
@@ -203,6 +204,16 @@ async function processPendingCommands() {
               message: `Scalecheck completato - Score: ${scalingResult.score}/100, MEE6: ${economyResult.synergyScore}/100`,
               scaling: scalingResult,
               economy: economyResult
+            };
+            break;
+            
+          case 'structure':
+            const structureAnalysis = await analyzeFullStructure360(guild);
+            setStructureData(guild.id, structureAnalysis);
+            result = { 
+              success: true, 
+              message: `Structure360 completato - Score: ${structureAnalysis.benchmark.score}/100, Fase: ${structureAnalysis.phase}`,
+              analysis: structureAnalysis
             };
             break;
             

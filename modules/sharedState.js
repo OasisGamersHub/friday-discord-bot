@@ -231,4 +231,25 @@ export function getGrowthData(guildId) {
   return data;
 }
 
+export function setStructureData(guildId, analysis) {
+  if (!sharedState.structureData) {
+    sharedState.structureData = new Map();
+  }
+  sharedState.structureData.set(guildId, {
+    analysis,
+    updatedAt: Date.now()
+  });
+}
+
+export function getStructureData(guildId) {
+  if (!sharedState.structureData) return null;
+  const data = sharedState.structureData.get(guildId);
+  if (!data) return null;
+  
+  if (Date.now() - data.updatedAt > 30 * 60 * 1000) {
+    return null;
+  }
+  return data;
+}
+
 export default sharedState;

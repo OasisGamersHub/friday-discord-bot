@@ -21,7 +21,8 @@ import {
   getActiveSessions,
   getSecurityStats,
   invalidateSession,
-  getGrowthData
+  getGrowthData,
+  getStructureData
 } from './modules/sharedState.js';
 import {
   connectDB,
@@ -552,6 +553,7 @@ app.get('/', (req, res) => {
           <div class="tabs">
             <div class="tab active" data-tab="overview">📊 Overview</div>
             <div class="tab" data-tab="growth">📈 Growth</div>
+            <div class="tab" data-tab="structure">🏗️ Structure</div>
             <div class="tab" data-tab="actions">🚀 Azioni</div>
             <div class="tab" data-tab="security">🛡️ Sicurezza</div>
             <div class="tab" data-tab="activity">📋 Attivita</div>
@@ -696,6 +698,78 @@ app.get('/', (req, res) => {
             </div>
           </div>
           
+          <div id="structure" class="tab-content">
+            <div class="card">
+              <h2>🎯 Benchmark Gaming 2025</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Confronto della struttura server con le best practices per community gaming. Clicca "Structure360" nel tab Azioni per aggiornare.</p>
+              <div class="grid">
+                <div class="stat-box">
+                  <div class="value" id="structure-score">-</div>
+                  <div class="label">Score Struttura</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="structure-phase">-</div>
+                  <div class="label">Fase Crescita</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="structure-channels">-</div>
+                  <div class="label">Canali Totali</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="structure-private">-</div>
+                  <div class="label">Canali Privati</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>🤖 Integrazione MEE6</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Friday rileva le funzionalita MEE6 attive per evitare duplicazioni e suggerire complementi.</p>
+              <div class="grid" style="grid-template-columns: 1fr 2fr;">
+                <div class="stat-box">
+                  <div class="value" id="mee6-detected">-</div>
+                  <div class="label">MEE6 Rilevato</div>
+                </div>
+                <div class="stat-box">
+                  <div class="value" id="mee6-features" style="font-size: 1rem;">-</div>
+                  <div class="label">Funzionalita Attive</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>✅ Ben Configurato</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Canali e categorie che rispettano le best practices gaming 2025.</p>
+              <div id="structure-configured" class="activity-log">
+                <p style="color: var(--text-muted);">Esegui Structure360 per analizzare...</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>❌ Mancanti Essenziali</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Canali raccomandati che mancano nel server.</p>
+              <div id="structure-missing" class="activity-log">
+                <p style="color: var(--text-muted);">Esegui Structure360 per analizzare...</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>💡 Raccomandazioni 360°</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Consigli prioritizzati per migliorare struttura, engagement, growth e monetizzazione.</p>
+              <div id="structure-recommendations" class="activity-log">
+                <p style="color: var(--text-muted);">Esegui Structure360 per analizzare...</p>
+              </div>
+            </div>
+            
+            <div class="card">
+              <h2>🔧 Modifiche Proposte</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Azioni concrete suggerite per ottimizzare il server (richiede approvazione manuale).</p>
+              <div id="structure-changes" class="activity-log">
+                <p style="color: var(--text-muted);">Esegui Structure360 per analizzare...</p>
+              </div>
+            </div>
+          </div>
+          
           <div id="actions" class="tab-content">
             <div class="card">
               <h2>🚀 Quick Actions</h2>
@@ -730,6 +804,12 @@ app.get('/', (req, res) => {
                   <div class="label">Scalecheck</div>
                   <p style="font-size: 0.75rem; color: var(--text-muted); margin: 8px 0;">Analisi scaling e dati MEE6</p>
                   <button class="btn btn-primary" style="width: 100%;" id="btn-scalecheck">Esegui</button>
+                </div>
+                <div class="stat-box" style="cursor: pointer;" onclick="executeAction('structure')">
+                  <div class="value" style="font-size: 2rem;">🏗️</div>
+                  <div class="label">Structure360</div>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 8px 0;">Analisi 360° benchmark gaming</p>
+                  <button class="btn btn-primary" style="width: 100%;" id="btn-structure">Esegui</button>
                 </div>
               </div>
             </div>
@@ -1314,11 +1394,68 @@ app.get('/', (req, res) => {
           loadSecurity();
           loadBackups();
           loadGrowth();
+          loadStructure();
           
           setInterval(loadStatus, 30000);
           setInterval(loadActivity, 60000);
           setInterval(loadSecurity, 30000);
           setInterval(loadGrowth, 60000);
+          setInterval(loadStructure, 120000);
+          
+          async function loadStructure() {
+            try {
+              const res = await fetch('/api/structure');
+              const data = await res.json();
+              
+              if (data.analysis) {
+                document.getElementById('structure-score').textContent = data.analysis.benchmark.score + '/100';
+                document.getElementById('structure-score').style.color = data.analysis.benchmark.score >= 80 ? '#2ecc71' : data.analysis.benchmark.score >= 60 ? '#f1c40f' : '#e74c3c';
+                document.getElementById('structure-phase').textContent = data.analysis.phase;
+                document.getElementById('structure-channels').textContent = data.analysis.currentStructure.totalChannels;
+                document.getElementById('structure-private').textContent = data.analysis.currentStructure.privateChannels > 0 ? '~' + data.analysis.currentStructure.privateChannels : '0';
+                
+                document.getElementById('mee6-detected').textContent = data.analysis.mee6Integration.detected ? 'Si' : 'No';
+                document.getElementById('mee6-detected').style.color = data.analysis.mee6Integration.detected ? '#2ecc71' : '#e74c3c';
+                document.getElementById('mee6-features').textContent = data.analysis.mee6Integration.managedFeatures.length > 0 ? data.analysis.mee6Integration.managedFeatures.join(', ') : 'Nessuna rilevata';
+                
+                const configuredContainer = document.getElementById('structure-configured');
+                if (data.analysis.benchmark.wellConfigured.length > 0) {
+                  configuredContainer.innerHTML = data.analysis.benchmark.wellConfigured.map(ch => '<div class="activity-item"><div>✅ ' + ch + '</div></div>').join('');
+                } else {
+                  configuredContainer.innerHTML = '<p style="color: var(--text-muted);">Nessun canale essenziale rilevato</p>';
+                }
+                
+                const missingContainer = document.getElementById('structure-missing');
+                if (data.analysis.benchmark.missingEssential.length > 0) {
+                  missingContainer.innerHTML = data.analysis.benchmark.missingEssential.map(ch => '<div class="activity-item"><div>❌ ' + ch + '</div></div>').join('');
+                } else {
+                  missingContainer.innerHTML = '<p style="color: var(--success);">Tutti i canali essenziali presenti!</p>';
+                }
+                
+                const recsContainer = document.getElementById('structure-recommendations');
+                if (data.analysis.recommendations360.length > 0) {
+                  recsContainer.innerHTML = data.analysis.recommendations360.slice(0, 6).map(rec => {
+                    const icon = rec.priority === 'high' ? '🔴' : rec.priority === 'medium' ? '🟡' : '🟢';
+                    return '<div class="activity-item"><div>' + icon + ' <strong>' + rec.category + ':</strong> ' + rec.title + '</div><div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">' + rec.description + '</div></div>';
+                  }).join('');
+                } else {
+                  recsContainer.innerHTML = '<p style="color: var(--text-muted);">Nessuna raccomandazione</p>';
+                }
+                
+                const changesContainer = document.getElementById('structure-changes');
+                if (data.analysis.proposedChanges.length > 0) {
+                  changesContainer.innerHTML = data.analysis.proposedChanges.slice(0, 5).map(change => {
+                    const icon = change.action === 'create' ? '➕' : change.action === 'merge' ? '🔀' : '📦';
+                    let text = change.action + ': ' + (change.name || '');
+                    if (change.action === 'merge') text = 'Unisci: ' + change.targets.join(', ') + ' → #' + change.into;
+                    return '<div class="activity-item"><div>' + icon + ' ' + text + '</div><div style="font-size: 0.85rem; color: var(--text-muted);">' + change.reason + '</div></div>';
+                  }).join('');
+                } else {
+                  changesContainer.innerHTML = '<p style="color: var(--success);">Nessuna modifica suggerita</p>';
+                }
+              }
+            } catch (e) { console.log('Structure error:', e); }
+          }
         </script>
       </body>
       </html>
@@ -1562,6 +1699,33 @@ app.get('/api/growth', requireAuth, apiRateLimit, async (req, res) => {
   }
 });
 
+app.get('/api/structure', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ analysis: null });
+  }
+  
+  try {
+    const cachedStructure = getStructureData(guildId);
+    
+    if (cachedStructure) {
+      return res.json({ 
+        analysis: cachedStructure.analysis,
+        cached: true,
+        updatedAt: cachedStructure.updatedAt
+      });
+    }
+    
+    res.json({ 
+      analysis: null, 
+      note: 'Esegui Structure360 dalla dashboard o !structure su Discord per analisi completa' 
+    });
+  } catch (error) {
+    console.error('Structure API error:', error);
+    res.json({ analysis: null, error: error.message });
+  }
+});
+
 app.get('/api/security', requireAuth, apiRateLimit, (req, res) => {
   const stats = getSecurityStats();
   const log = getSecurityLog(50);
@@ -1655,6 +1819,21 @@ app.post('/api/action/:action', requireAuth, apiRateLimit, async (req, res) => {
           res.json({ success: true, message: 'Scalecheck avviato! I dati MEE6 saranno aggiornati nel pannello Growth.', commandId: scalecheckCmdId });
         } else {
           res.json({ success: false, error: 'MongoDB non disponibile. Prova dal canale Discord con !scalecheck' });
+        }
+        break;
+        
+      case 'structure':
+        const structureCmdId = await addPendingCommand(guildId, 'structure', req.session.user?.username);
+        if (structureCmdId) {
+          addActivityLog({
+            type: 'command',
+            action: 'structure_triggered',
+            user: req.session.user?.username,
+            message: 'Structure360 avviato da dashboard'
+          });
+          res.json({ success: true, message: 'Structure360 avviato! I dati saranno aggiornati nel pannello Structure.', commandId: structureCmdId });
+        } else {
+          res.json({ success: false, error: 'MongoDB non disponibile. Prova dal canale Discord con !structure' });
         }
         break;
         
