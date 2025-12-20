@@ -10,8 +10,8 @@ channel = "stable-24_11"
 packages = ["flyctl"]
 
 [deployment]
-run = ["npm", "run", "server"]
-deploymentTarget = "vm"
+run = ["node", "server.js"]
+deploymentTarget = "autoscale"
 ignorePorts = false
 
 [agent]
