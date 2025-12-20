@@ -1316,3 +1316,378 @@ export function formatScalingReport(scaling, economy) {
   
   return text;
 }
+
+// Struttura ideale gaming 2025 per benchmark
+const GAMING_STRUCTURE_2025 = {
+  categories: [
+    { name: 'INFO', channels: ['welcome', 'rules', 'announcements', 'server-info'], priority: 'essential' },
+    { name: 'COMMUNITY', channels: ['general-chat', 'introductions', 'off-topic', 'memes'], priority: 'essential' },
+    { name: 'GAMING', channels: ['lfg', 'game-clips', 'tips-tricks'], priority: 'essential' },
+    { name: 'CREATIVE', channels: ['fan-art', 'content-creators', 'streaming'], priority: 'recommended' },
+    { name: 'SUPPORT', channels: ['help', 'suggestions', 'bot-commands'], priority: 'recommended' },
+    { name: 'VOICE', channels: ['general-voice', 'gaming-1', 'gaming-2', 'afk'], priority: 'essential' }
+  ],
+  essentialChannels: ['welcome', 'rules', 'announcements', 'general', 'chat'],
+  recommendedFeatures: ['onboarding', 'reaction-roles', 'leveling', 'events', 'giveaways']
+};
+
+export async function analyzeFullStructure360(guild) {
+  const channels = guild.channels.cache;
+  const roles = guild.roles.cache;
+  const memberCount = guild.memberCount;
+  const phase = getGrowthPhase(memberCount);
+  
+  const analysis = {
+    phase: phase.name,
+    memberCount,
+    currentStructure: {
+      categories: [],
+      textChannels: [],
+      voiceChannels: [],
+      privateChannels: 0,
+      totalChannels: 0
+    },
+    benchmark: {
+      score: 100,
+      missingEssential: [],
+      missingRecommended: [],
+      excess: [],
+      wellConfigured: []
+    },
+    mee6Integration: {
+      detected: false,
+      managedFeatures: []
+    },
+    recommendations360: [],
+    proposedChanges: []
+  };
+  
+  // Analizza struttura attuale
+  const categoryMap = new Map();
+  channels.forEach(ch => {
+    if (ch.type === ChannelType.GuildCategory) {
+      categoryMap.set(ch.id, { name: ch.name, channels: [] });
+      analysis.currentStructure.categories.push(ch.name);
+    }
+  });
+  
+  channels.forEach(ch => {
+    if (ch.type === ChannelType.GuildText) {
+      analysis.currentStructure.textChannels.push({
+        name: ch.name,
+        category: ch.parent?.name || 'Nessuna',
+        nsfw: ch.nsfw || false
+      });
+      if (ch.parentId && categoryMap.has(ch.parentId)) {
+        categoryMap.get(ch.parentId).channels.push(ch.name);
+      }
+    } else if (ch.type === ChannelType.GuildVoice) {
+      analysis.currentStructure.voiceChannels.push({
+        name: ch.name,
+        category: ch.parent?.name || 'Nessuna'
+      });
+    }
+  });
+  
+  analysis.currentStructure.totalChannels = 
+    analysis.currentStructure.textChannels.length + 
+    analysis.currentStructure.voiceChannels.length;
+  
+  // Stima canali privati (differenza tra totale guild e visibili)
+  try {
+    const allChannels = await guild.channels.fetch();
+    const visibleCount = channels.size;
+    const totalCount = allChannels.size;
+    analysis.currentStructure.privateChannels = Math.max(0, totalCount - visibleCount);
+  } catch (e) {
+    analysis.currentStructure.privateChannels = 0;
+  }
+  
+  // Benchmark contro struttura ideale gaming 2025
+  const allChannelNames = analysis.currentStructure.textChannels.map(c => c.name.toLowerCase());
+  
+  GAMING_STRUCTURE_2025.essentialChannels.forEach(essential => {
+    const found = allChannelNames.some(ch => ch.includes(essential));
+    if (found) {
+      analysis.benchmark.wellConfigured.push(essential);
+    } else {
+      analysis.benchmark.missingEssential.push(essential);
+      analysis.benchmark.score -= 10;
+    }
+  });
+  
+  // Verifica categorie
+  const categoryNames = analysis.currentStructure.categories.map(c => c.toLowerCase());
+  GAMING_STRUCTURE_2025.categories.forEach(cat => {
+    const hasCategory = categoryNames.some(c => 
+      c.includes(cat.name.toLowerCase()) || 
+      cat.channels.some(ch => c.includes(ch))
+    );
+    if (!hasCategory && cat.priority === 'essential') {
+      analysis.benchmark.missingRecommended.push(`Categoria ${cat.name}`);
+      analysis.benchmark.score -= 5;
+    }
+  });
+  
+  // Rileva integrazione MEE6
+  try {
+    const mee6 = await guild.members.fetch(MEE6_BOT_ID).catch(() => null);
+    if (mee6) {
+      analysis.mee6Integration.detected = true;
+      
+      // Rileva funzionalità MEE6 attive
+      for (const [feature, keywords] of Object.entries(MEE6_FEATURES)) {
+        const hasFeature = allChannelNames.some(ch => 
+          keywords.some(kw => ch.includes(kw.toLowerCase()))
+        );
+        if (hasFeature) {
+          analysis.mee6Integration.managedFeatures.push(feature);
+        }
+      }
+    }
+  } catch (e) {}
+  
+  // Calcola eccesso canali
+  const channelStatus = getChannelStatus(analysis.currentStructure.totalChannels, memberCount);
+  if (channelStatus.status === 'over_scaled') {
+    analysis.benchmark.excess.push({
+      type: 'channels',
+      current: analysis.currentStructure.totalChannels,
+      recommended: channelStatus.recommended,
+      difference: analysis.currentStructure.totalChannels - channelStatus.recommended
+    });
+    analysis.benchmark.score -= 10;
+  }
+  
+  // Genera raccomandazioni 360°
+  analysis.recommendations360 = generateRecommendations360(analysis, phase);
+  
+  // Proponi modifiche concrete
+  analysis.proposedChanges = generateProposedChanges(analysis, phase);
+  
+  analysis.benchmark.score = Math.max(0, Math.min(100, analysis.benchmark.score));
+  
+  return analysis;
+}
+
+function generateRecommendations360(analysis, phase) {
+  const recs = [];
+  
+  // Raccomandazioni struttura
+  if (analysis.benchmark.missingEssential.length > 0) {
+    recs.push({
+      category: 'Struttura',
+      priority: 'high',
+      title: 'Canali essenziali mancanti',
+      description: `Aggiungi: ${analysis.benchmark.missingEssential.join(', ')}`,
+      effort: 'basso',
+      impact: 'alto'
+    });
+  }
+  
+  if (analysis.benchmark.excess.length > 0) {
+    const excess = analysis.benchmark.excess[0];
+    recs.push({
+      category: 'Scalabilità',
+      priority: 'medium',
+      title: 'Ottimizza numero canali',
+      description: `Hai ${excess.current} canali, consigliati ${excess.recommended} per fase "${phase.name}". Unisci canali simili o archivia quelli inattivi.`,
+      effort: 'medio',
+      impact: 'medio'
+    });
+  }
+  
+  // Raccomandazioni MEE6
+  if (analysis.mee6Integration.detected) {
+    if (!analysis.mee6Integration.managedFeatures.includes('leveling')) {
+      recs.push({
+        category: 'Engagement',
+        priority: 'high',
+        title: 'Attiva MEE6 Leveling',
+        description: 'Il sistema di livelli aumenta engagement del 40%. Crea canali #leaderboard e ruoli livello.',
+        effort: 'basso',
+        impact: 'alto'
+      });
+    }
+    if (!analysis.mee6Integration.managedFeatures.includes('welcome')) {
+      recs.push({
+        category: 'Onboarding',
+        priority: 'high',
+        title: 'Configura messaggio benvenuto',
+        description: 'Messaggio di benvenuto personalizzato aumenta retention nuovi membri.',
+        effort: 'basso',
+        impact: 'alto'
+      });
+    }
+  }
+  
+  // Raccomandazioni growth
+  if (phase.name === 'Avvio' || phase.name === 'Base') {
+    recs.push({
+      category: 'Growth',
+      priority: 'medium',
+      title: 'Focus su community core',
+      description: 'In questa fase, concentrati su 10-15 membri attivi piuttosto che numeri. Organizza eventi settimanali.',
+      effort: 'medio',
+      impact: 'alto'
+    });
+  }
+  
+  // Raccomandazioni eventi
+  recs.push({
+    category: 'Eventi',
+    priority: 'medium',
+    title: 'Calendario eventi regolari',
+    description: 'Game nights settimanali, tornei mensili, giveaway Nitro aumentano attività.',
+    effort: 'medio',
+    impact: 'alto'
+  });
+  
+  // Raccomandazioni monetizzazione
+  if (!analysis.mee6Integration.managedFeatures.includes('monetization')) {
+    recs.push({
+      category: 'Monetizzazione',
+      priority: 'low',
+      title: 'Prepara per monetizzazione',
+      description: 'Con 500+ membri puoi attivare Discord Server Subscriptions o MEE6 Premium features.',
+      effort: 'medio',
+      impact: 'medio'
+    });
+  }
+  
+  return recs.sort((a, b) => {
+    const order = { high: 0, medium: 1, low: 2 };
+    return order[a.priority] - order[b.priority];
+  });
+}
+
+function generateProposedChanges(analysis, phase) {
+  const changes = [];
+  
+  // Proponi creazione canali mancanti
+  analysis.benchmark.missingEssential.forEach(ch => {
+    changes.push({
+      action: 'create',
+      type: 'channel',
+      name: `#${ch}`,
+      reason: 'Canale essenziale mancante',
+      autoApply: false
+    });
+  });
+  
+  // Proponi merge canali se over_scaled
+  if (analysis.benchmark.excess.length > 0) {
+    const textChannels = analysis.currentStructure.textChannels;
+    const duplicatePatterns = findDuplicateChannels(textChannels);
+    
+    duplicatePatterns.forEach(dup => {
+      changes.push({
+        action: 'merge',
+        type: 'channels',
+        targets: dup.channels,
+        into: dup.suggested,
+        reason: 'Canali simili che possono essere uniti',
+        autoApply: false
+      });
+    });
+  }
+  
+  // Proponi archiviazione categorie vuote
+  analysis.currentStructure.categories.forEach(cat => {
+    const channelsInCat = analysis.currentStructure.textChannels.filter(c => c.category === cat);
+    if (channelsInCat.length === 0) {
+      changes.push({
+        action: 'archive',
+        type: 'category',
+        name: cat,
+        reason: 'Categoria senza canali',
+        autoApply: false
+      });
+    }
+  });
+  
+  return changes;
+}
+
+function findDuplicateChannels(channels) {
+  const duplicates = [];
+  const patterns = [
+    { regex: /game|gaming|giochi/i, suggested: 'gaming' },
+    { regex: /chat|talk|discuss/i, suggested: 'general-chat' },
+    { regex: /clip|video|highlight/i, suggested: 'media' },
+    { regex: /help|support|aiuto/i, suggested: 'support' }
+  ];
+  
+  patterns.forEach(pattern => {
+    const matches = channels.filter(c => pattern.regex.test(c.name));
+    if (matches.length > 2) {
+      duplicates.push({
+        channels: matches.map(c => c.name).slice(0, 4),
+        suggested: pattern.suggested
+      });
+    }
+  });
+  
+  return duplicates;
+}
+
+export function formatStructure360Report(analysis) {
+  let text = `# 🏗️ Analisi Struttura 360° - ${analysis.phase}\n\n`;
+  
+  text += `**📊 Stato Attuale**\n`;
+  text += `• Membri: ${analysis.memberCount}\n`;
+  text += `• Canali testo: ${analysis.currentStructure.textChannels.length}\n`;
+  text += `• Canali vocali: ${analysis.currentStructure.voiceChannels.length}\n`;
+  text += `• Categorie: ${analysis.currentStructure.categories.length}\n`;
+  if (analysis.currentStructure.privateChannels > 0) {
+    text += `• Canali privati (non visibili): ~${analysis.currentStructure.privateChannels}\n`;
+  }
+  text += `\n`;
+  
+  text += `**🎯 Punteggio Benchmark Gaming 2025: ${analysis.benchmark.score}/100**\n\n`;
+  
+  if (analysis.benchmark.wellConfigured.length > 0) {
+    text += `✅ **Ben configurato:** ${analysis.benchmark.wellConfigured.join(', ')}\n`;
+  }
+  
+  if (analysis.benchmark.missingEssential.length > 0) {
+    text += `❌ **Mancanti essenziali:** ${analysis.benchmark.missingEssential.join(', ')}\n`;
+  }
+  
+  if (analysis.benchmark.excess.length > 0) {
+    const ex = analysis.benchmark.excess[0];
+    text += `⚠️ **Eccesso:** ${ex.current} canali (consigliati: ${ex.recommended})\n`;
+  }
+  text += `\n`;
+  
+  if (analysis.mee6Integration.detected) {
+    text += `**🤖 MEE6 Integration**\n`;
+    text += `• Rilevato: ✅\n`;
+    text += `• Funzionalità attive: ${analysis.mee6Integration.managedFeatures.join(', ') || 'Nessuna rilevata'}\n`;
+    text += `• Friday evita duplicazioni con MEE6\n\n`;
+  }
+  
+  if (analysis.recommendations360.length > 0) {
+    text += `**💡 Raccomandazioni 360°**\n`;
+    analysis.recommendations360.slice(0, 6).forEach((rec, i) => {
+      const icon = rec.priority === 'high' ? '🔴' : rec.priority === 'medium' ? '🟡' : '🟢';
+      text += `${icon} **${rec.category}**: ${rec.title}\n`;
+      text += `   └ ${rec.description}\n`;
+    });
+    text += `\n`;
+  }
+  
+  if (analysis.proposedChanges.length > 0) {
+    text += `**🔧 Modifiche Proposte** (richiede approvazione)\n`;
+    analysis.proposedChanges.slice(0, 5).forEach(change => {
+      const icon = change.action === 'create' ? '➕' : change.action === 'merge' ? '🔀' : '📦';
+      if (change.action === 'merge') {
+        text += `${icon} Unisci: ${change.targets.join(', ')} → #${change.into}\n`;
+      } else {
+        text += `${icon} ${change.action}: ${change.name || change.targets?.join(', ')}\n`;
+      }
+    });
+  }
+  
+  return text;
+}

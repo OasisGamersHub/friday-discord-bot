@@ -13,7 +13,9 @@ import {
   formatTextSuggestions,
   analyzeServerScaling,
   checkMEE6Economy,
-  formatScalingReport
+  formatScalingReport,
+  analyzeFullStructure360,
+  formatStructure360Report
 } from './modules/serverAnalyzer.js';
 import { 
   connectDB, 
@@ -840,6 +842,43 @@ client.on('messageCreate', async (message) => {
     }
   }
 
+  if (command === 'structure' || command === 'struttura') {
+    if (!isOwner) {
+      return message.reply('❌ Solo il proprietario del server può usare questo comando.');
+    }
+    
+    const rateCheck = checkRateLimit(message.guild.id, 'structure');
+    if (!rateCheck.allowed) {
+      return message.reply(`⏱️ Comando in cooldown. Riprova tra ${rateCheck.remaining} secondi.`);
+    }
+    
+    const loadingMsg = await message.reply('🏗️ Analisi struttura 360° in corso... (10-15 secondi)');
+    
+    try {
+      const analysis = await analyzeFullStructure360(message.guild);
+      const report = formatStructure360Report(analysis);
+      
+      if (report.length > 2000) {
+        const parts = report.match(/[\s\S]{1,1900}/g) || [report];
+        await loadingMsg.edit(parts[0]);
+        for (let i = 1; i < parts.length; i++) {
+          await message.channel.send(parts[i]);
+        }
+      } else {
+        await loadingMsg.edit(report);
+      }
+      
+      addActivityLog({
+        type: 'structure_analysis',
+        message: `Analisi 360° completata - Score: ${analysis.benchmark.score}/100`,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Structure analysis error:', error);
+      await loadingMsg.edit('❌ Errore durante l\'analisi della struttura.');
+    }
+  }
+
   if (command === 'trend' || command === 'trends') {
     if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
       return message.reply('❌ Serve il permesso Amministratore.');
@@ -1144,6 +1183,7 @@ client.on('messageCreate', async (message) => {
         { name: '!trend', value: 'Andamento e crescita', inline: true },
         { name: '!mee6', value: 'Check compatibilità MEE6', inline: true },
         { name: '!scalecheck', value: 'Analisi scaling + economia', inline: true },
+        { name: '!structure', value: 'Analisi 360° + raccomandazioni', inline: true },
         { name: '!backup', value: 'Backup configurazione', inline: true },
         { name: '!testi', value: 'Suggerimenti testo AI', inline: true },
         { name: '!fix <azione>', value: 'Applica correzioni', inline: true }
