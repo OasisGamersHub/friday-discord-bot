@@ -50,3 +50,4 @@ externalPort = 80
 
 [userenv.shared]
 DASHBOARD_URL = "https://friday.streambridgepro.com"
+OASIS_GUILD_ID = "1435348267268313090"
