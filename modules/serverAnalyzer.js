@@ -895,10 +895,10 @@ const SCALING_THRESHOLDS = {
 };
 
 const MEE6_ECONOMY_PATTERNS = {
-  currency: ['coin', 'moneta', 'soldi', 'gold', 'token', 'crediti', 'punti', 'gems', 'diamanti', 'stelline'],
-  shop: ['shop', 'negozio', 'store', 'acquista', 'compra', 'mercato'],
-  achievements: ['achievement', 'traguardo', 'obiettivo', 'premio', 'reward', 'badge', 'medaglia'],
-  premium: ['premium', 'vip', 'supporter', 'donatore', 'patron', 'boost', 'abbonato']
+  currency: ['coin', 'moneta', 'soldi', 'gold', 'token', 'crediti', 'punti', 'gems', 'diamanti', 'stelline', 'currency', 'valuta', 'denaro'],
+  shop: ['shop', 'negozio', 'store', 'acquista', 'compra', 'mercato', 'economia', 'economy'],
+  achievements: ['achievement', 'traguardo', 'obiettivo', 'premio', 'reward', 'badge', 'medaglia', 'unlock', 'sblocco', 'sfida', 'challenge', 'completato', 'completed', 'milestone', 'livello', 'level', 'rank', 'rango', 'grado', 'xp', 'exp', 'experience', 'esperienza', 'leaderboard', 'classifica', 'top', 'master', 'pro', 'elite', 'veteran', 'veterano', 'legend', 'leggenda', 'champion', 'campione'],
+  premium: ['premium', 'vip', 'supporter', 'donatore', 'patron', 'boost', 'abbonato', 'sub', 'subscriber', 'member', 'membro', 'special', 'speciale', 'exclusive', 'esclusivo']
 };
 
 export async function analyzeServerScaling(guild, dailyMetrics = []) {
