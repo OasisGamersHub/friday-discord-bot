@@ -20,6 +20,7 @@ import {
   invalidateSession
 } from './modules/sharedState.js';
 import {
+  connectDB,
   getDailyMetrics,
   getAuditHistory,
   getConfigBackups,
@@ -1279,8 +1280,10 @@ app.get('/robots.txt', (req, res) => {
   res.send('User-agent: *\nDisallow: /');
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server web avviato su porta ${PORT}`);
+connectDB().then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server web avviato su porta ${PORT}`);
+  });
 });
 
 export default app;
