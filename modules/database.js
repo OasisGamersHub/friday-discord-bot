@@ -705,3 +705,133 @@ export async function getRecentInvites(guildId, limit = 20) {
     return [];
   }
 }
+
+// ============================================
+// STRATEGY REPORTS
+// ============================================
+
+export async function saveStrategyReport(guildId, report) {
+  if (!db) return false;
+  
+  try {
+    await db.collection('strategyReports').insertOne({
+      guildId,
+      ...report,
+      createdAt: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error('Errore salvataggio strategy report:', error.message);
+    return false;
+  }
+}
+
+export async function getLatestStrategyReport(guildId) {
+  if (!db) return null;
+  
+  try {
+    return await db.collection('strategyReports')
+      .findOne({ guildId }, { sort: { createdAt: -1 } });
+  } catch (error) {
+    console.error('Errore lettura strategy report:', error.message);
+    return null;
+  }
+}
+
+export async function getStrategyReportHistory(guildId, limit = 6) {
+  if (!db) return [];
+  
+  try {
+    return await db.collection('strategyReports')
+      .find({ guildId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
+  } catch (error) {
+    console.error('Errore lettura storico strategy:', error.message);
+    return [];
+  }
+}
+
+export async function getMonthlySnapshot(guildId) {
+  if (!db) return null;
+  
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    
+    const currentMonthMetrics = await db.collection('dailyMetrics')
+      .find({ guildId, date: { $gte: thirtyDaysAgo } })
+      .toArray();
+    
+    const previousMonthMetrics = await db.collection('dailyMetrics')
+      .find({ guildId, date: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } })
+      .toArray();
+    
+    const inviteStats = await db.collection('invites')
+      .aggregate([
+        { $match: { guildId, createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: null, total: { $sum: 1 }, valid: { $sum: { $cond: ['$valid', 1, 0] } } } }
+      ]).toArray();
+    
+    const topInviters = await getTopInviters(guildId, 5);
+    
+    const calcAvg = (arr, field) => arr.length ? arr.reduce((sum, m) => sum + (m[field] || 0), 0) / arr.length : 0;
+    const calcTotal = (arr, field) => arr.reduce((sum, m) => sum + (m[field] || 0), 0);
+    
+    return {
+      period: { from: thirtyDaysAgo, to: now },
+      currentMonth: {
+        totalMessages: calcTotal(currentMonthMetrics, 'messageCount'),
+        avgDailyMessages: Math.round(calcAvg(currentMonthMetrics, 'messageCount')),
+        totalJoins: calcTotal(currentMonthMetrics, 'joinCount'),
+        totalLeaves: calcTotal(currentMonthMetrics, 'leaveCount'),
+        netGrowth: calcTotal(currentMonthMetrics, 'joinCount') - calcTotal(currentMonthMetrics, 'leaveCount'),
+        avgMembers: Math.round(calcAvg(currentMonthMetrics, 'memberCount')),
+        daysTracked: currentMonthMetrics.length
+      },
+      previousMonth: {
+        totalMessages: calcTotal(previousMonthMetrics, 'messageCount'),
+        avgDailyMessages: Math.round(calcAvg(previousMonthMetrics, 'messageCount')),
+        totalJoins: calcTotal(previousMonthMetrics, 'joinCount'),
+        totalLeaves: calcTotal(previousMonthMetrics, 'leaveCount'),
+        netGrowth: calcTotal(previousMonthMetrics, 'joinCount') - calcTotal(previousMonthMetrics, 'leaveCount'),
+        daysTracked: previousMonthMetrics.length
+      },
+      invites: {
+        thisMonth: inviteStats[0]?.total || 0,
+        validThisMonth: inviteStats[0]?.valid || 0,
+        topInviters: topInviters.map(t => ({ username: t.username, count: t.count }))
+      }
+    };
+  } catch (error) {
+    console.error('Errore creazione monthly snapshot:', error.message);
+    return null;
+  }
+}
+
+export async function canRequestStrategyReport(guildId) {
+  if (!db) return { canRequest: true, cooldownEnds: null };
+  
+  try {
+    const latest = await getLatestStrategyReport(guildId);
+    if (!latest) return { canRequest: true, cooldownEnds: null };
+    
+    const cooldownDays = 7;
+    const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
+    const timeSinceLastReport = Date.now() - new Date(latest.createdAt).getTime();
+    
+    if (timeSinceLastReport < cooldownMs) {
+      return {
+        canRequest: false,
+        cooldownEnds: new Date(new Date(latest.createdAt).getTime() + cooldownMs),
+        daysSinceLastReport: Math.floor(timeSinceLastReport / (24 * 60 * 60 * 1000))
+      };
+    }
+    
+    return { canRequest: true, cooldownEnds: null };
+  } catch (error) {
+    return { canRequest: true, cooldownEnds: null };
+  }
+}
