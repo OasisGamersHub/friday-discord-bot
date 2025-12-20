@@ -2064,6 +2064,24 @@ Raddoppia XP per 24h" style="width: 100%; padding: 12px; border-radius: 6px; bac
             } catch (e) { console.log('Financial error:', e); }
           }
           
+          // Auto-refresh al login - triggera analisi se dati vecchi
+          async function autoRefreshOnLogin() {
+            try {
+              const res = await fetch('/api/auto-refresh', { method: 'POST' });
+              const data = await res.json();
+              if (data.triggered && data.triggered.length > 0) {
+                console.log('Auto-refresh avviato:', data.triggered);
+                // Mostra notifica discreta
+                const notice = document.createElement('div');
+                notice.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: var(--surface); border: 1px solid var(--primary); padding: 12px 20px; border-radius: 8px; color: var(--primary); font-size: 14px; z-index: 9999;';
+                notice.textContent = '🔄 ' + data.message;
+                document.body.appendChild(notice);
+                setTimeout(() => notice.remove(), 5000);
+              }
+            } catch (e) { console.log('Auto-refresh check:', e); }
+          }
+          
+          autoRefreshOnLogin();
           loadStatus();
           loadActivity();
           loadMetrics();
@@ -2623,6 +2641,63 @@ app.post('/api/config/antiraid', requireAuth, apiRateLimit, (req, res) => {
   });
   
   res.json({ success: true, threshold, window });
+});
+
+// ============================================
+// AUTO-REFRESH ON LOGIN
+// ============================================
+
+const DATA_STALE_THRESHOLD = 6 * 60 * 60 * 1000; // 6 ore
+
+app.post('/api/auto-refresh', requireAuth, apiRateLimit, async (req, res) => {
+  const guildId = ALLOWED_GUILD_ID;
+  if (!guildId) {
+    return res.json({ success: false, error: 'Guild non configurata' });
+  }
+  
+  try {
+    const triggeredCommands = [];
+    const now = Date.now();
+    
+    // Check structure data
+    const structureData = getStructureData(guildId);
+    const structureAge = structureData?.updatedAt ? now - new Date(structureData.updatedAt).getTime() : Infinity;
+    
+    if (structureAge > DATA_STALE_THRESHOLD || !structureData?.analysis) {
+      await addPendingCommand(guildId, 'structure', 'auto-refresh');
+      triggeredCommands.push('structure');
+    }
+    
+    // Check growth/scale data
+    const growthData = getGrowthData(guildId);
+    const growthAge = growthData?.updatedAt ? now - new Date(growthData.updatedAt).getTime() : Infinity;
+    
+    if (growthAge > DATA_STALE_THRESHOLD || !growthData?.analysis) {
+      await addPendingCommand(guildId, 'scalecheck', 'auto-refresh');
+      triggeredCommands.push('scalecheck');
+    }
+    
+    if (triggeredCommands.length > 0) {
+      addActivityLog({
+        type: 'system',
+        action: 'auto_refresh',
+        user: 'Sistema',
+        message: `Auto-refresh avviato: ${triggeredCommands.join(', ')}`
+      });
+      console.log(`Auto-refresh triggered: ${triggeredCommands.join(', ')}`);
+    }
+    
+    res.json({ 
+      success: true, 
+      triggered: triggeredCommands,
+      message: triggeredCommands.length > 0 
+        ? `Analisi in corso: ${triggeredCommands.join(', ')}` 
+        : 'Dati già aggiornati'
+    });
+  } catch (error) {
+    console.error('Auto-refresh error:', error);
+    res.json({ success: false, error: error.message });
+  }
 });
 
 // ============================================
