@@ -1367,6 +1367,9 @@ app.get('/auth/discord', (req, res) => {
   const state = generateState();
   req.session.oauthState = state;
   
+  console.log('OAuth start - Redirect URI:', REDIRECT_URI);
+  console.log('OAuth start - Client ID:', DISCORD_CLIENT_ID ? 'SET' : 'MISSING');
+  
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
@@ -1380,8 +1383,11 @@ app.get('/auth/discord', (req, res) => {
 app.get('/auth/discord/callback', async (req, res) => {
   const { code, state } = req.query;
   
+  console.log('OAuth callback received - code:', code ? 'YES' : 'NO', 'state:', state, 'session state:', req.session.oauthState);
+  
   if (!code || !state || state !== req.session.oauthState) {
     console.error('OAuth validation failed: invalid state or missing code');
+    console.error('Details - code:', !!code, 'state match:', state === req.session.oauthState);
     logSecurityEvent({
       type: 'oauth_validation_failed',
       ip: req.ip,
