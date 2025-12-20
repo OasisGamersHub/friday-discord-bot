@@ -562,6 +562,7 @@ app.get('/', (req, res) => {
           <div id="overview" class="tab-content active">
             <div class="card">
               <h2><span class="live-dot"></span>Statistiche Live</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Stato attuale del bot e del server Discord. I dati si aggiornano automaticamente ogni 30 secondi.</p>
               <div class="grid">
                 <div class="stat-box">
                   <div class="value" id="bot-status">-</div>
@@ -584,6 +585,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>Trend Crescita Membri (30 giorni)</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Andamento del numero totale di membri negli ultimi 30 giorni. Utile per identificare periodi di crescita o calo.</p>
               <div class="chart-container">
                 <canvas id="growthChart"></canvas>
               </div>
@@ -591,6 +593,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>Attivita Messaggi (30 giorni)</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Numero di messaggi inviati ogni giorno. Indica quanto la community e attiva e coinvolta.</p>
               <div class="chart-container">
                 <canvas id="messagesChart"></canvas>
               </div>
@@ -598,6 +601,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>Flusso Membri - Join/Leave (30 giorni)</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 12px;">Confronto tra nuovi membri (verde) e membri usciti (rosso). Idealmente le entrate dovrebbero superare le uscite.</p>
               <div class="chart-container">
                 <canvas id="flowChart"></canvas>
               </div>
@@ -614,7 +618,8 @@ app.get('/', (req, res) => {
           <div id="growth" class="tab-content">
             <div class="card">
               <h2>🎯 Obiettivo 1000 Membri</h2>
-              <p id="data-source" style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;"></p>
+              <p style="color: var(--text-secondary); margin-bottom: 8px;">Progresso verso il traguardo di 1000 membri. Raggiungerlo sblocca funzionalita avanzate di Discord come Discovery.</p>
+              <p id="data-source" style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px;"></p>
               <div style="margin: 20px 0;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                   <span id="growth-current">0</span>
@@ -629,6 +634,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>📊 Punteggi</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Analisi della salute del server. Scaling Score misura l'equilibrio tra membri e risorse. Sinergia MEE6 indica la compatibilita con il bot MEE6.</p>
               <div class="grid">
                 <div class="stat-box">
                   <div class="value" id="scaling-score">-</div>
@@ -651,6 +657,7 @@ app.get('/', (req, res) => {
             
             <div class="card">
               <h2>💰 MEE6 Economy & Monetization</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Stato delle funzionalita MEE6 Premium nel server. Per aggiornare questi dati, clicca "Scalecheck" nel tab Azioni.</p>
               <div class="grid" style="grid-template-columns: repeat(2, 1fr);">
                 <div class="stat-box">
                   <div class="value" id="mee6-status">-</div>
@@ -689,38 +696,44 @@ app.get('/', (req, res) => {
           <div id="actions" class="tab-content">
             <div class="card">
               <h2>🚀 Quick Actions</h2>
-              <p style="color: var(--text-secondary); margin-bottom: 20px;">Esegui comandi bot direttamente dalla dashboard</p>
+              <p style="color: var(--text-secondary); margin-bottom: 20px;">Esegui comandi bot direttamente dalla dashboard. I risultati appariranno nel canale Discord del server.</p>
               <div class="grid">
                 <div class="stat-box" style="cursor: pointer;" onclick="executeAction('audit')">
                   <div class="value" style="font-size: 2rem;">🔍</div>
                   <div class="label">Avvia Audit</div>
-                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-audit">Esegui</button>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 8px 0;">Analisi completa server con suggerimenti AI</p>
+                  <button class="btn btn-primary" style="width: 100%;" id="btn-audit">Esegui</button>
                 </div>
                 <div class="stat-box" style="cursor: pointer;" onclick="executeAction('backup')">
                   <div class="value" style="font-size: 2rem;">💾</div>
                   <div class="label">Crea Backup</div>
-                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-backup">Esegui</button>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 8px 0;">Salva configurazione ruoli e canali</p>
+                  <button class="btn btn-primary" style="width: 100%;" id="btn-backup">Esegui</button>
                 </div>
                 <div class="stat-box" style="cursor: pointer;" onclick="executeAction('security')">
                   <div class="value" style="font-size: 2rem;">🛡️</div>
                   <div class="label">Check Sicurezza</div>
-                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-security">Esegui</button>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 8px 0;">Verifica IP bloccati e sessioni attive</p>
+                  <button class="btn btn-primary" style="width: 100%;" id="btn-security">Esegui</button>
                 </div>
                 <div class="stat-box" style="cursor: pointer;" onclick="executeAction('refresh')">
                   <div class="value" style="font-size: 2rem;">🔄</div>
                   <div class="label">Refresh Stats</div>
-                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-refresh">Esegui</button>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 8px 0;">Aggiorna tutte le statistiche</p>
+                  <button class="btn btn-primary" style="width: 100%;" id="btn-refresh">Esegui</button>
                 </div>
                 <div class="stat-box" style="cursor: pointer;" onclick="executeAction('scalecheck')">
                   <div class="value" style="font-size: 2rem;">📈</div>
                   <div class="label">Scalecheck</div>
-                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-scalecheck">Esegui</button>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 8px 0;">Analisi scaling e dati MEE6</p>
+                  <button class="btn btn-primary" style="width: 100%;" id="btn-scalecheck">Esegui</button>
                 </div>
               </div>
             </div>
             
             <div class="card">
               <h2>⚙️ Configurazione Anti-Raid</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Protezione automatica contro attacchi raid. Se troppi utenti entrano in poco tempo, riceverai un alert immediato.</p>
               <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
                 <div class="stat-box">
                   <div class="label" style="margin-bottom: 10px;">Soglia Join</div>
@@ -764,6 +777,7 @@ app.get('/', (req, res) => {
           <div id="security" class="tab-content">
             <div class="card">
               <h2>🛡️ Centro Sicurezza</h2>
+              <p style="color: var(--text-secondary); margin-bottom: 16px;">Monitoraggio in tempo reale della sicurezza. Traccia accessi, tentativi sospetti e sessioni attive.</p>
               <div class="grid">
                 <div class="stat-box">
                   <div class="value" id="sec-events">-</div>
