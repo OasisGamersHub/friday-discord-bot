@@ -575,21 +575,130 @@ app.get('/', (req, res) => {
         <link rel="icon" href="https://cdn.discordapp.com/icons/1435348267268313090/a_icon.png" type="image/png">
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>${styles}
-          .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-          .tab { padding: 10px 20px; background: rgba(26, 58, 58, 0.6); border: 1px solid rgba(46, 204, 113, 0.2); border-radius: 8px; cursor: pointer; color: #8fa8a8; transition: all 0.2s; }
-          .tab:hover, .tab.active { background: rgba(46, 204, 113, 0.2); border-color: #4aba8a; color: #4aba8a; }
-          .tab-content { display: none; }
+          .tabs { 
+            display: flex; 
+            gap: 8px; 
+            margin-bottom: 28px; 
+            flex-wrap: wrap;
+            padding: 6px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+          }
+          .tab { 
+            padding: 12px 24px; 
+            background: transparent;
+            border: none;
+            border-radius: 12px; 
+            cursor: pointer; 
+            color: var(--text-muted); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            font-size: 0.9rem;
+            position: relative;
+          }
+          .tab:hover { 
+            color: var(--text-primary);
+            background: rgba(79, 209, 197, 0.1);
+          }
+          .tab.active { 
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--bg-dark);
+            box-shadow: 0 4px 12px var(--glow-primary);
+          }
+          .tab-content { display: none; animation: fadeIn 0.3s ease; }
           .tab-content.active { display: block; }
-          .chart-container { background: rgba(13, 38, 38, 0.5); border-radius: 12px; padding: 20px; margin-top: 16px; }
-          .activity-log { max-height: 400px; overflow-y: auto; }
-          .activity-item { padding: 12px; margin: 8px 0; background: rgba(26, 58, 58, 0.5); border-radius: 8px; border-left: 3px solid #4aba8a; }
-          .activity-item.raid { border-left-color: #e74c3c; background: rgba(231, 76, 60, 0.1); }
-          .activity-item.audit { border-left-color: #3498db; }
-          .activity-item .time { color: #5a7a7a; font-size: 0.8rem; }
-          .live-dot { display: inline-block; width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; margin-right: 8px; animation: pulse 2s infinite; }
-          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-          .raid-alert { background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; border-radius: 10px; padding: 16px; margin-bottom: 20px; display: none; }
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+          
+          .chart-container { 
+            background: linear-gradient(145deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+            border: 1px solid var(--border);
+            border-radius: 16px; 
+            padding: 24px; 
+            margin-top: 20px;
+          }
+          
+          .activity-log { 
+            max-height: 420px; 
+            overflow-y: auto;
+            padding-right: 8px;
+          }
+          .activity-log::-webkit-scrollbar { width: 6px; }
+          .activity-log::-webkit-scrollbar-track { background: var(--bg-elevated); border-radius: 3px; }
+          .activity-log::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+          
+          .activity-item { 
+            padding: 16px 18px; 
+            margin: 10px 0; 
+            background: linear-gradient(145deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px; 
+            border-left: 4px solid var(--primary);
+            transition: all 0.2s;
+          }
+          .activity-item:hover {
+            border-color: var(--border-hover);
+            transform: translateX(4px);
+          }
+          .activity-item.raid { 
+            border-left-color: #E53E3E; 
+            background: linear-gradient(145deg, rgba(229, 62, 62, 0.1), var(--bg-card));
+          }
+          .activity-item.audit { border-left-color: #4299E1; }
+          .activity-item .time { 
+            color: var(--text-muted); 
+            font-size: 0.8rem;
+            font-weight: 500;
+          }
+          
+          .live-dot { 
+            display: inline-block; 
+            width: 10px; 
+            height: 10px; 
+            background: var(--success); 
+            border-radius: 50%; 
+            margin-right: 10px; 
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 8px var(--success);
+          }
+          @keyframes pulse { 
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--success); } 
+            50% { opacity: 0.6; box-shadow: 0 0 16px var(--success); } 
+          }
+          
+          .raid-alert { 
+            background: linear-gradient(145deg, rgba(229, 62, 62, 0.15), rgba(229, 62, 62, 0.05));
+            border: 1px solid #E53E3E; 
+            border-radius: 16px; 
+            padding: 20px; 
+            margin-bottom: 24px; 
+            display: none;
+            animation: shake 0.5s ease;
+          }
           .raid-alert.active { display: block; }
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+          }
+          
+          select {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          select:hover, select:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px var(--glow-primary);
+          }
         </style>
       </head>
       <body>
@@ -668,7 +777,7 @@ app.get('/', (req, res) => {
             <div class="card">
               <h2>Ultimi Audit</h2>
               <div id="audit-list" class="activity-log">
-                <p style="color: #5a7a7a;">Caricamento...</p>
+                <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
             </div>
           </div>
@@ -676,7 +785,7 @@ app.get('/', (req, res) => {
           <div id="growth" class="tab-content">
             <div class="card">
               <h2>🎯 Obiettivo 1000 Membri</h2>
-              <p id="data-source" style="color: #8fa8a8; font-size: 0.9rem; margin-bottom: 10px;"></p>
+              <p id="data-source" style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;"></p>
               <div style="margin: 20px 0;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                   <span id="growth-current">0</span>
@@ -736,14 +845,14 @@ app.get('/', (req, res) => {
             <div class="card">
               <h2>⚠️ Problemi Rilevati</h2>
               <div id="growth-issues" class="activity-log">
-                <p style="color: #5a7a7a;">Caricamento...</p>
+                <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
             </div>
             
             <div class="card">
               <h2>💡 Raccomandazioni</h2>
               <div id="growth-recommendations" class="activity-log">
-                <p style="color: #5a7a7a;">Caricamento...</p>
+                <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
             </div>
           </div>
@@ -751,7 +860,7 @@ app.get('/', (req, res) => {
           <div id="actions" class="tab-content">
             <div class="card">
               <h2>🚀 Quick Actions</h2>
-              <p style="color: #8fa8a8; margin-bottom: 20px;">Esegui comandi bot direttamente dalla dashboard</p>
+              <p style="color: var(--text-secondary); margin-bottom: 20px;">Esegui comandi bot direttamente dalla dashboard</p>
               <div class="grid">
                 <div class="stat-box" style="cursor: pointer;" onclick="executeAction('audit')">
                   <div class="value" style="font-size: 2rem;">🔍</div>
@@ -811,14 +920,14 @@ app.get('/', (req, res) => {
             <div class="card">
               <h2>📦 Backup Salvati</h2>
               <div id="backup-list" class="activity-log">
-                <p style="color: #5a7a7a;">Caricamento...</p>
+                <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
             </div>
             
             <div class="card">
               <h2>📝 Risultato Ultimo Comando</h2>
               <div id="action-result" class="activity-log" style="background: rgba(13, 38, 38, 0.5); padding: 16px; border-radius: 8px; min-height: 100px;">
-                <p style="color: #5a7a7a;">Nessun comando eseguito</p>
+                <p style="color: var(--text-muted);">Nessun comando eseguito</p>
               </div>
             </div>
           </div>
@@ -885,7 +994,7 @@ app.get('/', (req, res) => {
             <div class="card">
               <h2>Log Sicurezza</h2>
               <div id="security-log" class="activity-log">
-                <p style="color: #5a7a7a;">Caricamento...</p>
+                <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
             </div>
           </div>
@@ -894,7 +1003,7 @@ app.get('/', (req, res) => {
             <div class="card">
               <h2>Log Attivita</h2>
               <div id="activity-log" class="activity-log">
-                <p style="color: #5a7a7a;">Caricamento...</p>
+                <p style="color: var(--text-muted);">Caricamento...</p>
               </div>
             </div>
           </div>
@@ -1021,7 +1130,7 @@ app.get('/', (req, res) => {
               
               const container = document.getElementById('activity-log');
               if (data.length === 0) {
-                container.innerHTML = '<p style="color: #5a7a7a;">Nessuna attivita recente</p>';
+                container.innerHTML = '<p style="color: var(--text-muted);">Nessuna attivita recente</p>';
                 return;
               }
               
@@ -1052,18 +1161,25 @@ app.get('/', (req, res) => {
                     datasets: [{
                       label: 'Membri',
                       data: members,
-                      borderColor: '#4aba8a',
-                      backgroundColor: 'rgba(74, 186, 138, 0.1)',
+                      borderColor: '#4FD1C5',
+                      backgroundColor: 'rgba(79, 209, 197, 0.15)',
                       fill: true,
-                      tension: 0.3
+                      tension: 0.4,
+                      pointBackgroundColor: '#4FD1C5',
+                      pointBorderColor: '#0F1419',
+                      pointBorderWidth: 2,
+                      pointRadius: 4,
+                      pointHoverRadius: 6
                     }]
                   },
                   options: {
                     responsive: true,
-                    plugins: { legend: { labels: { color: '#8fa8a8' } } },
+                    plugins: { 
+                      legend: { labels: { color: '#A0AEC0', font: { family: 'Inter' } } }
+                    },
                     scales: {
-                      x: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } },
-                      y: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } }
+                      x: { ticks: { color: '#718096' }, grid: { color: 'rgba(79, 209, 197, 0.08)' } },
+                      y: { ticks: { color: '#718096' }, grid: { color: 'rgba(79, 209, 197, 0.08)' } }
                     }
                   }
                 });
@@ -1078,7 +1194,7 @@ app.get('/', (req, res) => {
               
               const container = document.getElementById('audit-list');
               if (data.length === 0) {
-                container.innerHTML = '<p style="color: #5a7a7a;">Nessun audit recente</p>';
+                container.innerHTML = '<p style="color: var(--text-muted);">Nessun audit recente</p>';
                 return;
               }
               
@@ -1102,7 +1218,7 @@ app.get('/', (req, res) => {
               
               const container = document.getElementById('security-log');
               if (!data.log || data.log.length === 0) {
-                container.innerHTML = '<p style="color: #2ecc71;">Nessun evento di sicurezza - Tutto OK!</p>';
+                container.innerHTML = '<p style="color: var(--success);">Nessun evento di sicurezza - Tutto OK!</p>';
                 return;
               }
               
@@ -1138,17 +1254,21 @@ app.get('/', (req, res) => {
                     datasets: [{
                       label: 'Messaggi',
                       data: messages,
-                      backgroundColor: 'rgba(230, 126, 34, 0.6)',
-                      borderColor: '#e67e22',
-                      borderWidth: 1
+                      backgroundColor: 'rgba(212, 163, 115, 0.7)',
+                      borderColor: '#D4A373',
+                      borderWidth: 2,
+                      borderRadius: 6,
+                      hoverBackgroundColor: 'rgba(212, 163, 115, 0.9)'
                     }]
                   },
                   options: {
                     responsive: true,
-                    plugins: { legend: { labels: { color: '#8fa8a8' } } },
+                    plugins: { 
+                      legend: { labels: { color: '#A0AEC0', font: { family: 'Inter' } } }
+                    },
                     scales: {
-                      x: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } },
-                      y: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } }
+                      x: { ticks: { color: '#718096' }, grid: { color: 'rgba(79, 209, 197, 0.08)' } },
+                      y: { ticks: { color: '#718096' }, grid: { color: 'rgba(79, 209, 197, 0.08)' } }
                     }
                   }
                 });
@@ -1163,27 +1283,31 @@ app.get('/', (req, res) => {
                       {
                         label: 'Join',
                         data: joins,
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        borderColor: '#68D391',
+                        backgroundColor: 'rgba(104, 211, 145, 0.15)',
                         fill: true,
-                        tension: 0.3
+                        tension: 0.4,
+                        pointRadius: 3
                       },
                       {
                         label: 'Leave',
                         data: leaves,
-                        borderColor: '#e74c3c',
-                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderColor: '#FC8181',
+                        backgroundColor: 'rgba(252, 129, 129, 0.15)',
                         fill: true,
-                        tension: 0.3
+                        tension: 0.4,
+                        pointRadius: 3
                       }
                     ]
                   },
                   options: {
                     responsive: true,
-                    plugins: { legend: { labels: { color: '#8fa8a8' } } },
+                    plugins: { 
+                      legend: { labels: { color: '#A0AEC0', font: { family: 'Inter' } } }
+                    },
                     scales: {
-                      x: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } },
-                      y: { ticks: { color: '#5a7a7a' }, grid: { color: 'rgba(46, 204, 113, 0.1)' } }
+                      x: { ticks: { color: '#718096' }, grid: { color: 'rgba(79, 209, 197, 0.08)' } },
+                      y: { ticks: { color: '#718096' }, grid: { color: 'rgba(79, 209, 197, 0.08)' } }
                     }
                   }
                 });
@@ -1198,7 +1322,7 @@ app.get('/', (req, res) => {
               
               const container = document.getElementById('backup-list');
               if (data.length === 0) {
-                container.innerHTML = '<p style="color: #5a7a7a;">Nessun backup salvato</p>';
+                container.innerHTML = '<p style="color: var(--text-muted);">Nessun backup salvato</p>';
                 return;
               }
               
@@ -1219,14 +1343,14 @@ app.get('/', (req, res) => {
               btn.textContent = 'In corso...';
             }
             
-            resultDiv.innerHTML = '<p style="color: #f1c40f;">⏳ Esecuzione ' + action + ' in corso...</p>';
+            resultDiv.innerHTML = '<p style="color: var(--warning);">⏳ Esecuzione ' + action + ' in corso...</p>';
             
             try {
               const res = await fetch('/api/action/' + action, { method: 'POST' });
               const data = await res.json();
               
               if (data.success) {
-                resultDiv.innerHTML = '<div class="activity-item" style="border-left-color: #2ecc71;"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div style="color: #2ecc71;"><strong>Successo!</strong> ' + data.message + '</div></div>';
+                resultDiv.innerHTML = '<div class="activity-item" style="border-left-color: var(--success);"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div style="color: var(--success);"><strong>Successo!</strong> ' + data.message + '</div></div>';
                 
                 if (action === 'backup') loadBackups();
                 if (action === 'refresh') {
@@ -1261,7 +1385,7 @@ app.get('/', (req, res) => {
               
               const resultDiv = document.getElementById('action-result');
               if (data.success) {
-                resultDiv.innerHTML = '<div class="activity-item" style="border-left-color: #2ecc71;"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div style="color: #2ecc71;"><strong>Configurazione salvata!</strong> Soglia: ' + threshold + ' join in ' + window + ' secondi</div></div>';
+                resultDiv.innerHTML = '<div class="activity-item" style="border-left-color: var(--success);"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div style="color: var(--success);"><strong>Configurazione salvata!</strong> Soglia: ' + threshold + ' join in ' + window + ' secondi</div></div>';
               } else {
                 resultDiv.innerHTML = '<div class="activity-item raid"><div class="time">' + new Date().toLocaleString('it-IT') + '</div><div>Errore: ' + (data.error || 'sconosciuto') + '</div></div>';
               }
@@ -1292,7 +1416,7 @@ app.get('/', (req, res) => {
                     return '<div class="activity-item"><div>' + icon + ' ' + issue.message + '</div></div>';
                   }).join('');
                 } else {
-                  issuesContainer.innerHTML = '<p style="color: #2ecc71;">Nessun problema rilevato!</p>';
+                  issuesContainer.innerHTML = '<p style="color: var(--success);">Nessun problema rilevato!</p>';
                 }
                 
                 const recsContainer = document.getElementById('growth-recommendations');
@@ -1303,7 +1427,7 @@ app.get('/', (req, res) => {
                     return '<div class="activity-item"><div>' + icon + ' ' + rec.text + '</div></div>';
                   }).join('');
                 } else {
-                  recsContainer.innerHTML = '<p style="color: #5a7a7a;">Nessuna raccomandazione</p>';
+                  recsContainer.innerHTML = '<p style="color: var(--text-muted);">Nessuna raccomandazione</p>';
                 }
               }
               
@@ -1323,9 +1447,9 @@ app.get('/', (req, res) => {
               if (cacheIndicator) {
                 if (data.cached) {
                   const updatedAt = new Date(data.updatedAt).toLocaleTimeString('it-IT');
-                  cacheIndicator.innerHTML = '<span style="color: #2ecc71;">🟢 Dati live</span> <small style="color: #8fa8a8;">(aggiornato: ' + updatedAt + ')</small>';
+                  cacheIndicator.innerHTML = '<span style="color: var(--success);">🟢 Dati live</span> <small style="color: var(--text-secondary);">(aggiornato: ' + updatedAt + ')</small>';
                 } else {
-                  cacheIndicator.innerHTML = '<span style="color: #f1c40f;">🟡 Dati stimati</span> <small style="color: #8fa8a8;">(esegui Scalecheck per dati live)</small>';
+                  cacheIndicator.innerHTML = '<span style="color: var(--warning);">🟡 Dati stimati</span> <small style="color: var(--text-secondary);">(esegui Scalecheck per dati live)</small>';
                 }
               }
             } catch (e) { console.log('Growth error:', e); }
