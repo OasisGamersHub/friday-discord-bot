@@ -10,6 +10,14 @@ Preferred communication style: Simple, everyday language (Italian)
 
 ## Recent Changes
 
+- **2024-12-20**: Sistema Automazioni Complete
+  - Scalecheck automatico ogni 6 ore con cache sharedState
+  - Report giornaliero via DM all'owner alle 21:00
+  - Backup automatico settimanale della configurazione
+  - Notifiche milestone (50, 100, 250, 500, 750, 1000 membri)
+  - Scalecheck remoto dalla dashboard (nuovo Quick Action)
+  - Indicatore dati live/stimati nel pannello Growth
+  - Funzioni `runAutoScalecheck()`, `runDailyReport()`, `runWeeklyBackup()`, `checkMilestones()`
 - **2024-12-20**: Sistema Scaling & Economy Analysis
   - Nuovo comando `!scalecheck` per analisi completa scaling server e MEE6 economy
   - Dashboard pannello "Growth" con progresso obiettivo 1000 membri

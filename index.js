@@ -129,10 +129,32 @@ function setupScheduledTasks() {
   
   setTimeout(() => {
     runWeeklyAudit();
+    runWeeklyBackup();
     setInterval(runWeeklyAudit, 7 * 24 * 60 * 60 * 1000);
+    setInterval(runWeeklyBackup, 7 * 24 * 60 * 60 * 1000);
   }, msUntilSunday);
   
-  console.log('Task schedulati configurati (incluso polling comandi dashboard)');
+  setInterval(runAutoScalecheck, 6 * 60 * 60 * 1000);
+  runAutoScalecheck();
+  
+  const msUntil9PM = (() => {
+    const target = new Date();
+    target.setHours(21, 0, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    return target - now;
+  })();
+  
+  setTimeout(() => {
+    runDailyReport();
+    setInterval(runDailyReport, 24 * 60 * 60 * 1000);
+  }, msUntil9PM);
+  
+  console.log('Task schedulati configurati:');
+  console.log('  - Scalecheck: ogni 6 ore');
+  console.log('  - Report giornaliero: 21:00');
+  console.log('  - Audit settimanale: domenica');
+  console.log('  - Backup settimanale: domenica');
+  console.log('  - Polling comandi dashboard: 5s');
 }
 
 async function processPendingCommands() {
@@ -168,6 +190,18 @@ async function processPendingCommands() {
             } else {
               result = { success: false, message: 'Nessun canale disponibile per inviare il report' };
             }
+            break;
+            
+          case 'scalecheck':
+            const scalingResult = await analyzeServerScaling(guild);
+            const economyResult = await checkMEE6Economy(guild);
+            setGrowthData(guild.id, scalingResult, economyResult);
+            result = { 
+              success: true, 
+              message: `Scalecheck completato - Score: ${scalingResult.score}/100, MEE6: ${economyResult.synergyScore}/100`,
+              scaling: scalingResult,
+              economy: economyResult
+            };
             break;
             
           case 'backup':
@@ -251,6 +285,150 @@ async function resetDailyCounters() {
   console.log('Contatori giornalieri resettati e persistiti');
 }
 
+async function runAutoScalecheck() {
+  const oasisGuildId = process.env.OASIS_GUILD_ID;
+  if (!oasisGuildId) return;
+  
+  const guild = client.guilds.cache.get(oasisGuildId);
+  if (!guild) return;
+  
+  try {
+    const scaling = await analyzeServerScaling(guild);
+    const economy = await checkMEE6Economy(guild);
+    
+    setGrowthData(guild.id, scaling, economy);
+    
+    addActivityLog({
+      type: 'scheduled_scalecheck',
+      guildId: guild.id,
+      message: `Scalecheck automatico - Score: ${scaling.score}/100, MEE6: ${economy.synergyScore}/100`
+    });
+    
+    console.log(`Scalecheck automatico completato per ${guild.name}`);
+  } catch (error) {
+    console.error('Errore scalecheck automatico:', error.message);
+  }
+}
+
+async function runDailyReport() {
+  const oasisGuildId = process.env.OASIS_GUILD_ID;
+  if (!oasisGuildId) return;
+  
+  const guild = client.guilds.cache.get(oasisGuildId);
+  if (!guild) return;
+  
+  try {
+    const stats = serverStats.get(guild.id);
+    const trends = await getTrends(guild.id) || { weeklyChange: 0 };
+    const report = await getSecurityReport(guild);
+    
+    const netGrowth = (stats?.todayJoins || 0) - (stats?.todayLeaves || 0);
+    const growthEmoji = netGrowth > 0 ? '📈' : netGrowth < 0 ? '📉' : '➡️';
+    const progressToGoal = ((guild.memberCount / 1000) * 100).toFixed(1);
+    const weeklyChange = trends?.weeklyChange || 0;
+    
+    const owner = await guild.fetchOwner();
+    if (owner) {
+      const dailyMessage = `📊 **Report Giornaliero Friday** - ${new Date().toLocaleDateString('it-IT')}
+
+**${guild.name}** • ${guild.memberCount} membri (${progressToGoal}% verso 1000)
+
+${growthEmoji} **Oggi:**
+• Join: +${stats?.todayJoins || 0}
+• Leave: -${stats?.todayLeaves || 0}
+• Netto: ${netGrowth >= 0 ? '+' : ''}${netGrowth}
+• Messaggi: ${stats?.messageCount || 0}
+
+🔒 **Sicurezza:** ${report.securityScore}/100
+${report.securityScore < 70 ? '⚠️ Ci sono problemi da risolvere. Usa `!audit`' : '✅ Tutto in ordine'}
+
+📈 **Trend settimanale:** ${weeklyChange >= 0 ? '+' : ''}${weeklyChange} membri
+
+💡 Usa \`!scalecheck\` per analisi dettagliata crescita`;
+
+      await owner.send(dailyMessage);
+      
+      addActivityLog({
+        type: 'daily_report',
+        guildId: guild.id,
+        message: `Report giornaliero inviato all'owner`
+      });
+    }
+  } catch (error) {
+    console.error('Errore report giornaliero:', error.message);
+  }
+}
+
+async function runWeeklyBackup() {
+  const oasisGuildId = process.env.OASIS_GUILD_ID;
+  if (!oasisGuildId) return;
+  
+  const guild = client.guilds.cache.get(oasisGuildId);
+  if (!guild) return;
+  
+  try {
+    const roles = guild.roles.cache
+      .filter(r => r.id !== guild.id)
+      .map(r => ({
+        name: r.name,
+        color: r.hexColor,
+        position: r.position,
+        permissions: r.permissions.bitfield.toString(),
+        hoist: r.hoist,
+        mentionable: r.mentionable
+      }));
+    
+    const channels = guild.channels.cache.map(c => ({
+      name: c.name,
+      type: c.type,
+      parentId: c.parentId,
+      position: c.position
+    }));
+    
+    await saveConfigBackup(guild.id, { roles, channels });
+    
+    addActivityLog({
+      type: 'scheduled_backup',
+      guildId: guild.id,
+      message: `Backup automatico: ${roles.length} ruoli, ${channels.length} canali`
+    });
+    
+    console.log(`Backup automatico completato per ${guild.name}`);
+  } catch (error) {
+    console.error('Errore backup automatico:', error.message);
+  }
+}
+
+const milestonesReached = new Set();
+
+async function checkMilestones(guild) {
+  const milestones = [50, 100, 250, 500, 750, 1000];
+  const memberCount = guild.memberCount;
+  
+  for (const milestone of milestones) {
+    const key = `${guild.id}-${milestone}`;
+    if (memberCount >= milestone && !milestonesReached.has(key)) {
+      milestonesReached.add(key);
+      
+      try {
+        const owner = await guild.fetchOwner();
+        if (owner) {
+          const nextMilestone = milestones.find(m => m > milestone) || 'il top!';
+          await owner.send(`🎉 **Traguardo Raggiunto!**\n\n**${guild.name}** ha superato i **${milestone} membri**!\n\nProssimo obiettivo: ${nextMilestone === 'il top!' ? nextMilestone : nextMilestone + ' membri'}\n\nContinua così! 🚀`);
+        }
+        
+        addActivityLog({
+          type: 'milestone',
+          guildId: guild.id,
+          message: `Traguardo ${milestone} membri raggiunto!`
+        });
+      } catch (error) {
+        console.log('Impossibile notificare milestone');
+      }
+    }
+  }
+}
+
 async function runWeeklyAudit() {
   const oasisGuildId = process.env.OASIS_GUILD_ID;
   if (!oasisGuildId) return;
@@ -306,6 +484,8 @@ client.on('guildMemberAdd', async member => {
       leaveCount: stats.todayLeaves || 0
     }).catch(err => console.error('Metrics save error:', err.message));
   }
+  
+  checkMilestones(member.guild).catch(err => console.error('Milestone check error:', err.message));
   
   const guildId = member.guild.id;
   const now = Date.now();

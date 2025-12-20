@@ -325,6 +325,7 @@ app.get('/', (req, res) => {
           <div id="growth" class="tab-content">
             <div class="card">
               <h2>🎯 Obiettivo 1000 Membri</h2>
+              <p id="data-source" style="color: #8fa8a8; font-size: 0.9rem; margin-bottom: 10px;"></p>
               <div style="margin: 20px 0;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                   <span id="growth-current">0</span>
@@ -420,6 +421,11 @@ app.get('/', (req, res) => {
                   <div class="value" style="font-size: 2rem;">🔄</div>
                   <div class="label">Refresh Stats</div>
                   <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-refresh">Esegui</button>
+                </div>
+                <div class="stat-box" style="cursor: pointer;" onclick="executeAction('scalecheck')">
+                  <div class="value" style="font-size: 2rem;">📈</div>
+                  <div class="label">Scalecheck</div>
+                  <button class="btn btn-primary" style="margin-top: 12px; width: 100%;" id="btn-scalecheck">Esegui</button>
                 </div>
               </div>
             </div>
@@ -960,6 +966,16 @@ app.get('/', (req, res) => {
                 document.getElementById('achievements-status').style.color = data.economy.features?.achievements?.detected ? '#2ecc71' : '#e74c3c';
                 document.getElementById('monetization-status').textContent = data.economy.features?.monetization?.detected ? 'Attivo' : 'Non attivo';
                 document.getElementById('monetization-status').style.color = data.economy.features?.monetization?.detected ? '#2ecc71' : '#e74c3c';
+              }
+              
+              const cacheIndicator = document.getElementById('data-source');
+              if (cacheIndicator) {
+                if (data.cached) {
+                  const updatedAt = new Date(data.updatedAt).toLocaleTimeString('it-IT');
+                  cacheIndicator.innerHTML = '<span style="color: #2ecc71;">🟢 Dati live</span> <small style="color: #8fa8a8;">(aggiornato: ' + updatedAt + ')</small>';
+                } else {
+                  cacheIndicator.innerHTML = '<span style="color: #f1c40f;">🟡 Dati stimati</span> <small style="color: #8fa8a8;">(esegui Scalecheck per dati live)</small>';
+                }
               }
             } catch (e) { console.log('Growth error:', e); }
           }
