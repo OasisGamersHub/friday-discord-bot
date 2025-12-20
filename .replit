@@ -1,5 +1,5 @@
 entrypoint = "index.js"
-modules = ["nodejs-22", "python-3.11"]
+modules = ["nodejs-22", "python-3.11", "postgresql-16"]
 hidden = [".config", "package-lock.json"]
 
 [gitHubImport]
@@ -34,13 +34,13 @@ args = "Web Server"
 name = "Web Server"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run server"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run production"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000
